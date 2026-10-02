@@ -1,0 +1,173 @@
+---
+name: WordPress plugin - deploy to WordPress.org
+
+# Packs the plugin, attaches the zip to the GitHub release and commits the same
+# payload to trunk and tags/<version> in the plugin's wordpress.org SVN.
+#
+# Called by the plugin repository on a v* tag, or by workflow_dispatch with a version
+# to re-run a failed deploy - see docs/wp-plugin.md.
+
+on:
+  workflow_call:
+    inputs:
+      slug:
+        description: "wordpress.org slug - the SVN repository is plugins.svn.wordpress.org/<slug>"
+        required: true
+        type: string
+      version:
+        description: "Version to deploy without the leading v; empty means the tag that triggered the run"
+        required: false
+        type: string
+        default: ""
+      root:
+        description: "The plugin project inside the repository"
+        required: false
+        type: string
+        default: "."
+      plugin-dir:
+        description: "What ships, relative to root"
+        required: false
+        type: string
+        default: "public"
+      main-file:
+        description: "The file with the plugin header, relative to plugin-dir; empty means detect"
+        required: false
+        type: string
+        default: ""
+      version-file:
+        description: "version.txt or package.json, relative to root; empty means detect"
+        required: false
+        type: string
+        default: ""
+      build-command:
+        description: "Runs in root before packing, e.g. npm ci && npm run build"
+        required: false
+        type: string
+        default: ""
+      exclude:
+        description: "Newline-separated rsync patterns to leave out of the payload"
+        required: false
+        type: string
+        default: ""
+      node-version:
+        required: false
+        type: string
+        default: "24.x"
+      php-version:
+        description: "For composer, when the payload has a composer.json"
+        required: false
+        type: string
+        default: "8.1"
+      tools-ref:
+        description: "Ref of palasthotel/github-workflows whose scripts are used - keep it equal to the ref in uses:"
+        required: false
+        type: string
+        default: "v1"
+    secrets:
+      SVN_USERNAME:
+        required: true
+      SVN_PASSWORD:
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: Build and deploy to WordPress.org
+    runs-on: ubuntu-latest
+    env:
+      # One line on purpose: a folded block scalar would keep line breaks inside ${{ }}
+      RELEASE_TAG: ${{ inputs.version != '' && format('v{0}', inputs.version) || github.ref_name }}
+      SLUG: ${{ inputs.slug }}
+      ROOT: ${{ inputs.root }}
+      PLUGIN_DIR: ${{ inputs.plugin-dir }}
+      MAIN_FILE: ${{ inputs.main-file }}
+      VERSION_FILE: ${{ inputs.version-file }}
+      EXCLUDE: ${{ inputs.exclude }}
+      TOOLS: ${{ github.workspace }}/.github-workflows/wp-plugin/bin
+    steps:
+      - name: Version from the tag
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "🤖 Deploying $SLUG $VERSION"
+
+      - uses: actions/checkout@v6
+
+      - name: Check out the release scripts
+        uses: actions/checkout@v6
+        with:
+          repository: palasthotel/github-workflows
+          ref: ${{ inputs.tools-ref }}
+          path: .github-workflows
+
+      # Before anything is built or published: the tag has to match every carrier
+      - name: Check version numbers
+        run: bash "$TOOLS/check-version.sh"
+
+      - uses: actions/setup-node@v6
+        if: inputs.build-command != ''
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Build
+        if: inputs.build-command != ''
+        working-directory: ${{ inputs.root }}
+        run: ${{ inputs.build-command }}
+
+      - name: Does the payload need composer?
+        id: composer
+        run: |
+          if [[ -f "$ROOT/$PLUGIN_DIR/composer.json" ]]; then echo "needed=true" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: shivammathur/setup-php@v2
+        if: steps.composer.outputs.needed == 'true'
+        with:
+          php-version: ${{ inputs.php-version }}
+          tools: composer
+
+      - name: Pack
+        run: bash "$TOOLS/pack.sh"
+
+      - name: Attach the zip to the release
+        uses: softprops/action-gh-release@v2
+        continue-on-error: true
+        with:
+          # Explicit, because on a dispatch run github.ref is a branch
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: ${{ inputs.root }}/${{ inputs.slug }}.zip
+
+      - name: Install SVN
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y subversion
+
+      - name: Check out the WordPress.org SVN repository
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+        run: >-
+          svn checkout "https://plugins.svn.wordpress.org/$SLUG/" svn
+          --username "$SVN_USERNAME" --password "$SVN_PASSWORD"
+          --no-auth-cache --non-interactive
+
+      - name: Prepare trunk and tags/${{ env.VERSION }}
+        run: SVN_DIR=svn bash "$TOOLS/svn-prepare.sh"
+
+      - name: Commit to SVN
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+        working-directory: svn
+        run: >-
+          svn commit -m "Release version $VERSION"
+          --username "$SVN_USERNAME" --password "$SVN_PASSWORD"
+          --no-auth-cache --non-interactive
+
+      - name: Clean up the SVN checkout
+        if: always()
+        run: rm -rf svn
+
+      - name: Done
+        run: echo "🤖 $SLUG $VERSION deployed to https://wordpress.org/plugins/$SLUG/ 🚀"

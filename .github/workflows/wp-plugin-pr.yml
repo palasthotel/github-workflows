@@ -1,0 +1,193 @@
+---
+name: WordPress plugin - PR checks
+
+# php -l on every supported PHP version, a pack with assertions on the payload, and a
+# check that the version carriers agree. Called on pull requests to main.
+
+on:
+  workflow_call:
+    inputs:
+      slug:
+        required: true
+        type: string
+      root:
+        required: false
+        type: string
+        default: "."
+      plugin-dir:
+        required: false
+        type: string
+        default: "public"
+      main-file:
+        required: false
+        type: string
+        default: ""
+      version-file:
+        required: false
+        type: string
+        default: ""
+      php-versions:
+        description: "JSON list for php -l, starting with the plugin's Requires PHP"
+        required: false
+        type: string
+        default: '["7.4", "8.2", "8.3", "8.4"]'
+      build-command:
+        required: false
+        type: string
+        default: ""
+      exclude:
+        required: false
+        type: string
+        default: ""
+      required-files:
+        description: "Newline-separated paths that must be in the payload, relative to it - e.g. the files wp_enqueue_script loads"
+        required: false
+        type: string
+        default: ""
+      dev-plugin-name:
+        description: "Plugin Name of the development wrapper in the repository root, which must never ship"
+        required: false
+        type: string
+        default: ""
+      node-version:
+        required: false
+        type: string
+        default: "24.x"
+      php-version:
+        required: false
+        type: string
+        default: "8.1"
+      tools-ref:
+        required: false
+        type: string
+        default: "v1"
+
+permissions:
+  contents: read
+
+env:
+  SLUG: ${{ inputs.slug }}
+  ROOT: ${{ inputs.root }}
+  PLUGIN_DIR: ${{ inputs.plugin-dir }}
+  MAIN_FILE: ${{ inputs.main-file }}
+  VERSION_FILE: ${{ inputs.version-file }}
+  EXCLUDE: ${{ inputs.exclude }}
+  TOOLS: ${{ github.workspace }}/.github-workflows/wp-plugin/bin
+
+jobs:
+  php-lint:
+    name: PHP syntax check (${{ matrix.php-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ${{ fromJSON(inputs.php-versions) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          coverage: none
+
+      - name: Lint PHP files
+        run: |
+          find "$ROOT" -name '*.php' \
+            -not -path '*/node_modules/*' -not -path '*/build/*' -not -path '*/vendor/*' -print0 \
+            | xargs -0 -r -n1 php -l
+
+  pack:
+    name: Pack plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check out the release scripts
+        uses: actions/checkout@v6
+        with:
+          repository: palasthotel/github-workflows
+          ref: ${{ inputs.tools-ref }}
+          path: .github-workflows
+
+      - uses: actions/setup-node@v6
+        if: inputs.build-command != ''
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Build
+        if: inputs.build-command != ''
+        working-directory: ${{ inputs.root }}
+        run: ${{ inputs.build-command }}
+
+      - name: Does the payload need composer?
+        id: composer
+        run: |
+          if [[ -f "$ROOT/$PLUGIN_DIR/composer.json" ]]; then echo "needed=true" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: shivammathur/setup-php@v2
+        if: steps.composer.outputs.needed == 'true'
+        with:
+          php-version: ${{ inputs.php-version }}
+          tools: composer
+
+      - name: Pack
+        run: bash "$TOOLS/pack.sh"
+
+      # The payload is what wordpress.org serves, so assert what has to be in it and
+      # what must not.
+      - name: Assert the payload is clean
+        env:
+          REQUIRED_FILES: ${{ inputs.required-files }}
+          DEV_PLUGIN_NAME: ${{ inputs.dev-plugin-name }}
+        run: |
+          payload="$ROOT/build/$SLUG"
+          fail=0
+
+          # the main file, the readme and the licence always
+          main="$(cd "$ROOT/$PLUGIN_DIR" && grep -lE '^[[:space:]]*\*?[[:space:]]*Plugin Name:' ./*.php | head -n1)"
+          for file in "${MAIN_FILE:-$main}" LICENSE; do
+            [[ -f "$payload/$file" ]] || { echo "::error::$file is missing from the payload"; fail=1; }
+          done
+          [[ -f "$payload/readme.txt" || -f "$payload/README.txt" ]] || { echo "::error::readme.txt is missing from the payload"; fail=1; }
+
+          while IFS= read -r file; do
+            [[ -z "${file//[[:space:]]/}" ]] && continue
+            [[ -e "$payload/$file" ]] || { echo "::error::$file is missing from the payload"; fail=1; }
+          done <<< "$REQUIRED_FILES"
+
+          # repository-only files
+          for file in .git .github bin node_modules package.json package-lock.json composer.json composer.lock CONTRIBUTING.md CHANGELOG.md; do
+            [[ ! -e "$payload/$file" ]] || { echo "::error::$file must not be in the payload"; fail=1; }
+          done
+
+          # wordpress.org discards symlinks when it builds the download
+          if [[ -n "$(find "$payload" -type l)" ]]; then
+            echo "::error::the payload contains symlinks:"; find "$payload" -type l; fail=1
+          fi
+
+          # the development wrapper would put a second entry in everybody's plugin list
+          if [[ -n "$DEV_PLUGIN_NAME" ]] && grep -rqF "Plugin Name: $DEV_PLUGIN_NAME" "$payload"; then
+            echo "::error::the payload contains the development wrapper \"$DEV_PLUGIN_NAME\""; fail=1
+          fi
+
+          exit "$fail"
+
+  versions:
+    name: Version carriers agree
+    # Not on the release PR: it arrives with only the version file bumped and gets the
+    # other carriers in a second push from the sync workflow, so its first commit would
+    # fail every time. The deploy runs the same check anyway.
+    if: ${{ ! startsWith(github.head_ref, 'release-please--') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check out the release scripts
+        uses: actions/checkout@v6
+        with:
+          repository: palasthotel/github-workflows
+          ref: ${{ inputs.tools-ref }}
+          path: .github-workflows
+
+      - name: Check version numbers
+        run: bash "$TOOLS/check-version.sh"

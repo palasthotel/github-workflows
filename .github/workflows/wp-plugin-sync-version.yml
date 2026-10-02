@@ -1,0 +1,99 @@
+---
+name: WordPress plugin - sync version into the release PR
+
+# release-please bumps only the version file and CHANGELOG.md. This writes the new
+# version into the plugin header and the readme's Stable tag, adds the readme
+# changelog entry, and pushes that to the release PR. Called on pull_request
+# (opened, synchronize); does nothing on other PRs.
+
+on:
+  workflow_call:
+    inputs:
+      app-id:
+        description: "App id of the org-owned release bot - pass vars.RELEASE_BOT_APP_ID"
+        required: true
+        type: string
+      root:
+        required: false
+        type: string
+        default: "."
+      plugin-dir:
+        required: false
+        type: string
+        default: "public"
+      main-file:
+        required: false
+        type: string
+        default: ""
+      version-file:
+        required: false
+        type: string
+        default: ""
+      tools-ref:
+        required: false
+        type: string
+        default: "v1"
+    secrets:
+      RELEASE_BOT_PRIVATE_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  sync-version:
+    # Only the release-please PR. Its branch lives in this repository, so plain
+    # pull_request gets the secrets.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.head_ref, 'release-please--')
+    runs-on: ubuntu-latest
+    env:
+      ROOT: ${{ inputs.root }}
+      PLUGIN_DIR: ${{ inputs.plugin-dir }}
+      MAIN_FILE: ${{ inputs.main-file }}
+      VERSION_FILE: ${{ inputs.version-file }}
+    steps:
+      # Pushing with the app token re-triggers the PR checks on the new head commit;
+      # a GITHUB_TOKEN push triggers nothing and would leave the PR without checks.
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ inputs.app-id }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+          permission-contents: write
+
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Check out the release scripts
+        uses: actions/checkout@v6
+        with:
+          repository: palasthotel/github-workflows
+          ref: ${{ inputs.tools-ref }}
+          path: .github-workflows
+
+      - name: Sync the version into the plugin files
+        id: sync
+        run: |
+          bash .github-workflows/wp-plugin/bin/sync-version.sh | tee sync.log
+          echo "files=$(sed -n 's/^changed: //p' sync.log | tail -n1)" >> "$GITHUB_OUTPUT"
+          rm sync.log
+
+      - name: Commit to the release PR branch
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          FILES: ${{ steps.sync.outputs.files }}
+        run: |
+          # The bot's numeric user id - needed for a verified commit attribution
+          BOT_ID=$(gh api "/users/${APP_SLUG}%5Bbot%5D" --jq .id)
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${BOT_ID}+${APP_SLUG}[bot]@users.noreply.github.com"
+          # shellcheck disable=SC2086 # FILES is a space-separated list of paths
+          git add -- $FILES
+          git diff --cached --quiet && { echo "No changes to commit"; exit 0; }
+          git commit -m "chore: update plugin header and readme"
+          git push
