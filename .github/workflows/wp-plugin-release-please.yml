@@ -1,0 +1,48 @@
+---
+name: WordPress plugin - release PR
+
+# Opens and updates the release PR from conventional commits, and tags the release
+# when it is merged. Called on every push to main.
+
+on:
+  workflow_call:
+    inputs:
+      app-id:
+        description: "App id of the org-owned release bot - pass vars.RELEASE_BOT_APP_ID"
+        required: true
+        type: string
+      config-file:
+        required: false
+        type: string
+        default: "release-please-config.json"
+      manifest-file:
+        required: false
+        type: string
+        default: ".release-please-manifest.json"
+    secrets:
+      RELEASE_BOT_PRIVATE_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # A short-lived token of the release bot instead of GITHUB_TOKEN: the tag this job
+      # pushes has to trigger the deploy, and tags pushed with GITHUB_TOKEN trigger
+      # nothing.
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ inputs.app-id }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          config-file: ${{ inputs.config-file }}
+          manifest-file: ${{ inputs.manifest-file }}
