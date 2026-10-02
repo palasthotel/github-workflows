@@ -56,20 +56,20 @@ jobs:
     steps:
       # Pushing with the app token re-triggers the PR checks on the new head commit;
       # a GITHUB_TOKEN push triggers nothing and would leave the PR without checks.
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v3
         id: app-token
         with:
           app-id: ${{ inputs.app-id }}
           private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
           permission-contents: write
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.head_ref }}
           token: ${{ steps.app-token.outputs.token }}
 
       - name: Check out the release scripts
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: palasthotel/github-workflows
           ref: ${{ inputs.tools-ref }}

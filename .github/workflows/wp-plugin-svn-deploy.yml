@@ -93,10 +93,10 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "🤖 Deploying $SLUG $VERSION"
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Check out the release scripts
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: palasthotel/github-workflows
           ref: ${{ inputs.tools-ref }}
@@ -106,7 +106,7 @@ jobs:
       - name: Check version numbers
         run: bash "$TOOLS/check-version.sh"
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         if: inputs.build-command != ''
         with:
           node-version: ${{ inputs.node-version }}
@@ -131,7 +131,7 @@ jobs:
         run: bash "$TOOLS/pack.sh"
 
       - name: Attach the zip to the release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         continue-on-error: true
         with:
           # Explicit, because on a dispatch run github.ref is a branch
