@@ -158,6 +158,32 @@ svn up -q "$WORK/wc"
 svn commit -q -m release --non-interactive "$WORK/wc" >/dev/null 2>&1
 expect "mirrors assets/ when the repository has it" bash -c "svn ls 'file://$WORK/repo/assets' | grep -q banner-772x250.png && ! svn ls 'file://$WORK/repo/assets' | grep -q icon-128x128.png"
 
+echo "svn-checkout.sh"
+# The repository from above now holds tags/1.2.4 and tags/1.2.5.
+CO="$WORK/sparse"
+VERSION=1.2.6 SVN_URL="file://$WORK/repo" SVN_DIR="$CO" bash "$BIN/svn-checkout.sh"
+expect "checks out trunk" test -f "$CO/trunk/my-plugin.php"
+expect "checks out assets" test -f "$CO/assets/banner-772x250.png"
+expect "leaves the other tags empty" bash -c "[[ -d '$CO/tags/1.2.4' && -z \"\$(ls -A '$CO/tags/1.2.4')\" ]]"
+(cd "$P" && VERSION=1.2.6 SLUG=my-plugin SVN_DIR="$CO" bash "$BIN/svn-prepare.sh" >/dev/null 2>&1)
+expect "does not schedule the other tags for deletion" bash -c "! svn status '$CO' | grep -q 'tags/1.2.4'"
+expect "commits a release from it" svn commit -q -m release --non-interactive "$CO"
+expect "keeps the other tags" bash -c "svn ls 'file://$WORK/repo/tags/1.2.4' | grep -q my-plugin.php"
+svn export -q "file://$WORK/repo/tags/1.2.6" "$WORK/tag126"
+expect "tags/1.2.6 == build/<slug>/" diff -r "$WORK/tag126" "$P/build/my-plugin"
+# Re-deploying a published version, the retry path: tags/1.2.6 exists already.
+REV="$(svnlook youngest "$WORK/repo")"
+VERSION=1.2.6 SVN_URL="file://$WORK/repo" SVN_DIR="$WORK/again" bash "$BIN/svn-checkout.sh"
+expect "checks out an existing tags/VERSION" test -f "$WORK/again/tags/1.2.6/my-plugin.php"
+(cd "$P" && VERSION=1.2.6 SLUG=my-plugin SVN_DIR="$WORK/again" bash "$BIN/svn-prepare.sh" >/dev/null 2>&1)
+expect "re-deploys an unchanged release" svn commit -q -m release --non-interactive "$WORK/again"
+expect "commits nothing for an unchanged release" test "$(svnlook youngest "$WORK/repo")" = "$REV"
+# A plugin whose SVN repository has no assets/ yet.
+svnadmin create "$WORK/bare"
+mkdir -p "$WORK/bare-seed/trunk" "$WORK/bare-seed/tags" && echo "x" > "$WORK/bare-seed/trunk/a.php"
+svn import -q -m seed "$WORK/bare-seed" "file://$WORK/bare"
+expect "works without assets/" env VERSION=1.0.0 SVN_URL="file://$WORK/bare" SVN_DIR="$WORK/bare-co" bash "$BIN/svn-checkout.sh"
+
 echo
 echo "$passed passed, $failed failed"
 [[ "$failed" -eq 0 ]]

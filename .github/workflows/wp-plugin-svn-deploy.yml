@@ -143,12 +143,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y subversion
 
-      - name: Check out the WordPress.org SVN repository
+      - name: Check out trunk, assets and tags/${{ env.VERSION }} from WordPress.org SVN
         env:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          SVN_URL: https://plugins.svn.wordpress.org/${{ env.SLUG }}/
         run: >-
-          svn checkout "https://plugins.svn.wordpress.org/$SLUG/" svn
+          SVN_DIR=svn bash "$TOOLS/svn-checkout.sh"
           --username "$SVN_USERNAME" --password "$SVN_PASSWORD"
           --no-auth-cache --non-interactive
 
