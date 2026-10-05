@@ -132,13 +132,20 @@ SEED="$WORK/seed"; mkdir -p "$SEED/tags" "$SEED/branches" "$SEED/assets"
 cp -R "$P/public" "$SEED/trunk"   # cp -R keeps the symlinks
 echo "png" > "$SEED/assets/icon-128x128.png"
 echo "stale" > "$SEED/trunk/removed-in-this-release.php"
+# a whole directory that the release drops, as grid's lib/ in 3.0.0, with names that
+# a status parser has to keep intact
+mkdir -p "$SEED/trunk/lib/old/nested"
+echo "stale" > "$SEED/trunk/lib/old/nested/with space.php"
+echo "stale" > "$SEED/trunk/lib/old/icon@2x.png"
 svnadmin create "$WORK/repo"
 svn import -q -m seed "$SEED" "file://$WORK/repo"
 svn co -q "file://$WORK/repo" "$WORK/wc"
 expect "the seed really holds symlinks" bash -c "svn proplist -R '$WORK/wc/trunk' | grep -q svn:special"
 (cd "$P" && VERSION=1.2.4 SLUG=my-plugin SVN_DIR="$WORK/wc" bash "$BIN/svn-prepare.sh" >/dev/null 2>&1)
 expect "schedules the removed file for deletion" bash -c "svn status '$WORK/wc' | grep -E '^D' | grep -q removed-in-this-release.php"
+expect "leaves nothing missing" bash -c "! svn status '$WORK/wc' | grep -q '^!'"
 expect "commits without E145001" svn commit -q -m release --non-interactive "$WORK/wc"
+expect "removes a dropped directory from trunk" bash -c "! svn ls 'file://$WORK/repo/trunk/lib' >/dev/null 2>&1"
 expect "leaves no svn:special behind" bash -c "! svn proplist -R 'file://$WORK/repo/trunk' | grep -q svn:special"
 svn export -q "file://$WORK/repo/trunk" "$WORK/trunk"
 svn export -q "file://$WORK/repo/tags/1.2.4" "$WORK/tag"

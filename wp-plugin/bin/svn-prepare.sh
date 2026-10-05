@@ -28,8 +28,11 @@ rsync -rL "$BUILD_DIR/" trunk/
 rsync -rL trunk/ "tags/$VERSION/"
 
 # A file that was a symlink in SVN keeps svn:special, and committing a regular file
-# in its place fails with "E145001 ... has unexpectedly changed kind".
-svn propdel svn:special -R trunk "tags/$VERSION" >/dev/null 2>&1 || true
+# in its place fails with "E145001 ... has unexpectedly changed kind". Only trunk is
+# versioned at this point; tags/VERSION is new. propdel stops at the first missing
+# node of a removed directory and can leave the working copy locked, so clean up.
+svn propdel svn:special -R trunk >/dev/null 2>&1 || true
+svn cleanup
 
 # assets/ holds the plugin page's banner, icon and screenshots and is not part of the
 # download. It is only mirrored when the repository carries the directory - otherwise
@@ -40,8 +43,11 @@ if [[ -d "$ASSETS_DIR" ]]; then
 fi
 
 svn add --force . >/dev/null
-svn status | awk '/^!/{print $2}' | while IFS= read -r file; do
-  [[ -n "$file" ]] && svn rm -q "$file"
+# The path starts in column 9, after seven status columns and a space; a lock (L) or
+# a tree conflict (C) in those columns, or a space in the path, must not change it.
+svn status | sed -n 's/^!.......//p' | while IFS= read -r file; do
+  # the trailing @ keeps a path like icon@2x.png from being read as a peg revision
+  [[ -n "$file" ]] && svn rm -q --force "$file@"
 done
 
 svn status
