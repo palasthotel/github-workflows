@@ -206,6 +206,14 @@ Run the build step first if the plugin has one. The result is `build/my-plugin/`
 - **`assets/` is mirrored only when the repository has it.** It holds the plugin page's
   banner, icon and screenshots next to `trunk/` in SVN and never ships with the download.
   Mirroring an absent directory with `--delete` would empty the plugin page's media.
+- **Only trunk, assets and the release's tag are checked out** (`svn-checkout.sh`). The
+  other tags stay empty directories: a release never changes them, and a full checkout
+  of grid (25 tags, up to 3000 files each) took minutes and 1.4 GB instead of half a
+  minute and 75 MB. If `tags/<version>` exists already, as on a re-deploy, it is checked
+  out too, so an unchanged re-deploy still commits nothing.
+- **Paths from `svn status` are read from column 9.** `awk '{print $2}'` took a status
+  letter such as `L` (locked) for the path and cut names with spaces; grid 3.0.0, which
+  dropped its old `lib/` directory, failed with `svn/L is not under version control`.
 - **composer** runs only when the payload has a `composer.json`: `install --no-dev`, an
   optimized autoloader, then `composer.json` and `composer.lock` are dropped.
 
