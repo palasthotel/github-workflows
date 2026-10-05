@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.1](https://github.com/palasthotel/github-workflows/compare/v1.0.0...v1.0.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* **wp-plugin:** remove dropped directories and odd file names from SVN ([6e88f66](https://github.com/palasthotel/github-workflows/commit/6e88f66162bd92b3cc4ee4227a903f8aecca51a5))
+* **wp-plugin:** remove dropped directories and odd file names from SVN ([2d379fd](https://github.com/palasthotel/github-workflows/commit/2d379fd78410504fe6b4e58974e4648cc684208c))
+
 ## 1.0.0 (2026-10-02)
 
 
