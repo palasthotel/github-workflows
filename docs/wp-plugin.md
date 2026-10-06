@@ -180,7 +180,7 @@ where they are left empty.
 
 The payload check always requires the main file, the readme and `LICENSE`, and rejects
 symlinks, `.github`, `bin`, `node_modules`, `package.json`, `package-lock.json`,
-`composer.json`, `composer.lock`, `CONTRIBUTING.md` and `CHANGELOG.md`.
+`CONTRIBUTING.md` and `CHANGELOG.md`.
 
 ## Packing locally
 
@@ -214,8 +214,10 @@ Run the build step first if the plugin has one. The result is `build/my-plugin/`
 - **Paths from `svn status` are read from column 9.** `awk '{print $2}'` took a status
   letter such as `L` (locked) for the path and cut names with spaces; grid 3.0.0, which
   dropped its old `lib/` directory, failed with `svn/L is not under version control`.
-- **composer** runs only when the payload has a `composer.json`: `install --no-dev`, an
-  optimized autoloader, then `composer.json` and `composer.lock` are dropped.
+- **composer** runs only when the payload has a `composer.json`: `install --no-dev` and an
+  optimized autoloader. `composer.json` and `composer.lock` stay in the payload: the
+  wordpress.org plugin review asks for `composer.json` next to `vendor/`
+  (`missing_composer_json_file`), even though nothing reads it at runtime.
 
 ## When a deploy fails
 

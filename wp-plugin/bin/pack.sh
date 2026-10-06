@@ -32,16 +32,16 @@ done <<< "${EXCLUDE:-}"
 # the download, and SVN refuses a commit that puts a symlink where it versions a file.
 rsync -rL ${RSYNC_EXCLUDES[@]+"${RSYNC_EXCLUDES[@]}"} "$PLUGIN_PATH/" "$DEST_PATH/"
 
-# A composer.json in the payload: install without dev dependencies, write an
-# optimized autoloader, and drop composer.json/composer.lock - nothing reads them at
-# runtime, and the provenance stays in vendor/composer/installed.json.
+# A composer.json in the payload: install without dev dependencies and write an
+# optimized autoloader. composer.json and composer.lock stay in the payload: nothing
+# reads them at runtime, but the wordpress.org plugin review asks for composer.json
+# next to vendor/ (missing_composer_json_file), so others can rebuild it.
 if [[ -f "$DEST_PATH/composer.json" ]]; then
   command -v composer >/dev/null || wp_plugin_die "the payload has a composer.json, but composer is not installed"
   echo "Installing composer dependencies without dev ..."
   (cd "$DEST_PATH" \
     && composer install --no-dev --no-interaction --quiet \
-    && composer dump-autoload --no-dev --optimize --quiet \
-    && rm -f composer.json composer.lock)
+    && composer dump-autoload --no-dev --optimize --quiet)
 fi
 
 echo "Zipping $SLUG.zip ..."
