@@ -156,7 +156,9 @@ jobs:
           done <<< "$REQUIRED_FILES"
 
           # repository-only files
-          for file in .git .github bin node_modules package.json package-lock.json composer.json composer.lock CONTRIBUTING.md CHANGELOG.md; do
+          # composer.json and composer.lock do ship: the wordpress.org review asks for
+          # composer.json next to vendor/
+          for file in .git .github bin node_modules package.json package-lock.json CONTRIBUTING.md CHANGELOG.md; do
             [[ ! -e "$payload/$file" ]] || { echo "::error::$file must not be in the payload"; fail=1; }
           done
 

@@ -123,6 +123,21 @@ expect "ships nothing from outside the plugin dir" test ! -e "$P/build/my-plugin
 mkdir -p "$WORK/unzipped" && (cd "$WORK/unzipped" && unzip -q "$P/my-plugin.zip")
 expect "zip and build/<slug>/ are identical" diff -r "$WORK/unzipped/my-plugin" "$P/build/my-plugin"
 
+# wordpress.org's review rejected a payload with vendor/ but without composer.json
+if command -v composer >/dev/null; then
+  P="$(fixture composer)"
+  cat > "$P/public/composer.json" <<'JSON'
+{ "name": "palasthotel/my-plugin", "autoload": { "psr-4": { "MyPlugin\\": "inc/" } } }
+JSON
+  (cd "$P" && SLUG=my-plugin bash "$BIN/pack.sh" >/dev/null 2>&1)
+  expect "installs the composer autoloader" test -f "$P/build/my-plugin/vendor/autoload.php"
+  expect "keeps composer.json in the payload" test -f "$P/build/my-plugin/composer.json"
+  expect "keeps composer.lock in the payload" test -f "$P/build/my-plugin/composer.lock"
+  expect "leaves the repository's composer files alone" bash -c "test -f '$P/public/composer.json' && test ! -e '$P/public/vendor'"
+else
+  echo "  skip composer cases (composer not installed)"
+fi
+
 echo "svn-prepare.sh"
 # Seed an SVN repository the way wordpress.org has it for an old release: the Swiss
 # translations committed as symlinks (svn:special), page media in assets/.
