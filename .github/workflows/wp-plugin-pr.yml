@@ -1,8 +1,9 @@
 ---
 name: WordPress plugin - PR checks
 
-# php -l on every supported PHP version, a pack with assertions on the payload, and a
-# check that the version carriers agree. Called on pull requests to main.
+# php -l on every supported PHP version, a pack with assertions on the payload, the
+# wordpress.org Plugin Check on that payload, and a check that the version carriers
+# agree. Called on pull requests to main.
 
 on:
   workflow_call:
@@ -57,6 +58,16 @@ on:
         required: false
         type: string
         default: "8.1"
+      plugin-check:
+        description: "Run the wordpress.org Plugin Check on the packed payload"
+        required: false
+        type: boolean
+        default: true
+      plugin-check-strict:
+        description: "Fail on Plugin Check warnings too, not only on errors"
+        required: false
+        type: boolean
+        default: false
       tools-ref:
         required: false
         type: string
@@ -173,6 +184,38 @@ jobs:
           fi
 
           exit "$fail"
+
+      - name: Hand the payload to the Plugin Check
+        if: inputs.plugin-check
+        uses: actions/upload-artifact@v7
+        with:
+          name: payload
+          path: ${{ inputs.root }}/build/${{ inputs.slug }}
+          if-no-files-found: error
+          retention-days: 1
+
+  plugin-check:
+    name: Plugin Check
+    # The payload as wordpress.org would get it, in a job without the repository: the
+    # action reads .wp-env.json from the working directory, and a plugin repository's
+    # own one loads the development wrapper next to the payload - the same classes twice.
+    if: inputs.plugin-check
+    needs: pack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: payload
+          # the directory name is the slug Plugin Check installs it under
+          path: plugin-check/${{ inputs.slug }}
+
+      - uses: WordPress/plugin-check-action@v1
+        with:
+          build-dir: plugin-check/${{ inputs.slug }}
+          strict: ${{ inputs.plugin-check-strict }}
+          # The results are in the job log and as annotations. Without a token the
+          # action skips its PR comment, which would need pull-requests: write.
+          repo-token: ""
 
   versions:
     name: Version carriers agree

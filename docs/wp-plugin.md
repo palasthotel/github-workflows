@@ -12,7 +12,8 @@ Push to main
     ├──▶ wp-plugin-sync-version.yml     writes the version into the plugin header and readme.txt
     │
     │    any PR to main
-    └──▶ wp-plugin-pr.yml               php -l, pack + payload assertions, version carriers agree
+    └──▶ wp-plugin-pr.yml               php -l, pack + payload assertions, Plugin Check,
+                                        version carriers agree
 
 Merge the release PR  →  release-please tags vX.Y.Z and creates the GitHub release
     │
@@ -176,11 +177,41 @@ where they are left empty.
 | `node-version` | `24.x` | for the build command |
 | `php-version` | `8.1` | for composer, used when the payload has a `composer.json` |
 | `app-id` | - | `${{ vars.RELEASE_BOT_APP_ID }}` (release-please, sync) |
+| `plugin-check` | `true` | run the wordpress.org Plugin Check on the packed payload (pr) |
+| `plugin-check-strict` | `false` | fail on Plugin Check warnings as well, not only on errors (pr) |
 | `tools-ref` | `v1` | the ref of this repository whose scripts run - keep it equal to the ref after `@` |
 
 The payload check always requires the main file, the readme and `LICENSE`, and rejects
 symlinks, `.github`, `bin`, `node_modules`, `package.json`, `package-lock.json`,
 `CONTRIBUTING.md` and `CHANGELOG.md`.
+
+## Plugin Check
+
+The `Plugin Check` job runs [WordPress/plugin-check-action](https://github.com/WordPress/plugin-check-action)
+on the payload the `pack` job built - the files wordpress.org would get, with `vendor/`
+and `dist/`, not the repository. Errors fail the PR, warnings appear as annotations and
+in the job log; `plugin-check-strict: true` fails on warnings too. The scan at
+submission is stricter than this one, so a warning is worth fixing before the first
+release on wordpress.org.
+
+The job does not check out the repository on purpose: the action reads `.wp-env.json`
+from the working directory, and a plugin's own one loads the development wrapper next to
+the payload - the same classes twice.
+
+Running it locally against the packed plugin:
+
+```sh
+SLUG=my-plugin bash ../github-workflows/wp-plugin/bin/pack.sh
+mkdir -p /tmp/pcp/my-plugin && rsync -a --delete build/my-plugin/ /tmp/pcp/my-plugin/
+echo '{ "plugins": [ "/tmp/pcp/my-plugin", "https://downloads.wordpress.org/plugin/plugin-check.latest-stable.zip" ] }' > .wp-env.override.json
+npx @wordpress/env start --update
+npx @wordpress/env run cli wp plugin list        # my-plugin has to be active
+npx @wordpress/env run cli wp plugin check my-plugin
+```
+
+Mount a copy, not `build/`: `pack.sh` deletes and recreates `build/`, after which the
+Docker mount points at nothing and the check only reports that the plugin is not
+installed.
 
 ## Packing locally
 
