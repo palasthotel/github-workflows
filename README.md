@@ -1,4 +1,4 @@
-# github-workflows
+# Palasthotel Workflows for GitHub Actions
 
 Reusable GitHub Actions workflows for Palasthotel repositories.
 
