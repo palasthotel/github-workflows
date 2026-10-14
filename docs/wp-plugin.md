@@ -173,7 +173,7 @@ where they are left empty.
 | `exclude` | none | newline-separated rsync patterns kept out of the payload (pr, deploy) |
 | `required-files` | none | newline-separated paths that must be in the payload - list what `wp_enqueue_script` loads, so a renamed build output fails the PR instead of 404ing in wp-admin (pr) |
 | `dev-plugin-name` | none | the development wrapper's `Plugin Name`, which must never ship (pr) |
-| `php-versions` | `["7.4", "8.2", "8.3", "8.4"]` | `php -l` matrix, starting with the plugin's `Requires PHP` (pr) |
+| `php-versions` | `["8.0", "8.1", "8.2", "8.3", "8.4", "8.5"]` | `php -l` matrix: every minor version from the plugin's `Requires PHP` up to the newest release, without gaps. `php -l` only catches syntax errors; deprecations show up as notices but do not fail the job. The default fits `Requires PHP: 8.0`; set it when the plugin requires more (pr) |
 | `node-version` | `24.x` | for the build command |
 | `php-version` | `8.1` | for composer, used when the payload has a `composer.json` |
 | `app-id` | - | `${{ vars.RELEASE_BOT_APP_ID }}` (release-please, sync) |
