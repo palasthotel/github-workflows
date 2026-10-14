@@ -28,10 +28,10 @@ on:
         type: string
         default: ""
       php-versions:
-        description: "JSON list for php -l, starting with the plugin's Requires PHP"
+        description: "JSON list for php -l: every minor version from the plugin's Requires PHP up, without gaps"
         required: false
         type: string
-        default: '["7.4", "8.2", "8.3", "8.4"]'
+        default: '["8.0", "8.1", "8.2", "8.3", "8.4"]'
       build-command:
         required: false
         type: string
