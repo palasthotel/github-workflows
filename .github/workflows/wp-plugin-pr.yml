@@ -31,7 +31,7 @@ on:
         description: "JSON list for php -l: every minor version from the plugin's Requires PHP up, without gaps"
         required: false
         type: string
-        default: '["8.0", "8.1", "8.2", "8.3", "8.4"]'
+        default: '["8.0", "8.1", "8.2", "8.3", "8.4", "8.5"]'
       build-command:
         required: false
         type: string
