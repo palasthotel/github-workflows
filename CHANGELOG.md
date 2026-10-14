@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.3.0](https://github.com/palasthotel/github-workflows/compare/v1.2.0...v1.3.0) (2026-10-14)
+
+
+### Features
+
+* **wp-plugin:** lint PHP 8.0 to 8.4 by default ([3fd9fb8](https://github.com/palasthotel/github-workflows/commit/3fd9fb8161d832081ae3ab5927b1b07f842b786c))
+* **wp-plugin:** lint PHP 8.0 to 8.5 by default ([b91c4ca](https://github.com/palasthotel/github-workflows/commit/b91c4cafd35f914579f9593e069d2276ecd255b1))
+* **wp-plugin:** lint PHP 8.5 by default as well ([09435e6](https://github.com/palasthotel/github-workflows/commit/09435e6fb1aa39367005a8399bbbdb70c6bae477))
+
 ## [1.2.0](https://github.com/palasthotel/github-workflows/compare/v1.1.0...v1.2.0) (2026-10-14)
 
 
