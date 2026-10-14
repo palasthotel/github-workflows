@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/palasthotel/github-workflows/compare/v1.1.0...v1.2.0) (2026-10-14)
+
+
+### Features
+
+* **wp-plugin:** run the wordpress.org Plugin Check on the packed payload ([7c84894](https://github.com/palasthotel/github-workflows/commit/7c848949ec1e1f010dd7fa8570d04207a40c652a))
+* **wp-plugin:** run the wordpress.org Plugin Check on the packed payload ([597e815](https://github.com/palasthotel/github-workflows/commit/597e81571ef2b58be17a1a59ab60eec1447e0f04))
+
 ## [1.1.0](https://github.com/palasthotel/github-workflows/compare/v1.0.1...v1.1.0) (2026-10-06)
 
 
