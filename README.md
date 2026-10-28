@@ -11,6 +11,7 @@ repositories call them.
 |---|---|---|
 | WordPress plugins | `wp-plugin-pr.yml`, `wp-plugin-release-please.yml`, `wp-plugin-sync-version.yml`, `wp-plugin-svn-deploy.yml`, `wp-plugin-sbom.yml` | [docs/wp-plugin.md](docs/wp-plugin.md), [docs/sbom.md](docs/sbom.md) |
 | Dependency-Track | `dependency-track-upload.yml` | [docs/sbom.md](docs/sbom.md) |
+| Dependabot | `dependabot/bin/generate.sh`, the template of every `.github/dependabot.yml` | [docs/dependabot.md](docs/dependabot.md) |
 
 ## Using a workflow
 
@@ -45,6 +46,7 @@ credentials stay in the calling repositories and are passed with `secrets: inher
 | `.github/workflows/ci.yml`, `release-please.yml` | this repository's own checks and releases |
 | `wp-plugin/bin/` | the scripts the WordPress workflows run |
 | `dependency-track/bin/` | the upload script of `dependency-track-upload.yml` |
+| `dependabot/bin/` | the generator of the Dependabot config |
 | `tests/` | tests for the scripts, run by CI |
 | `docs/` | one page per family |
 

@@ -2,8 +2,9 @@
 name: WordPress plugin - PR checks
 
 # php -l on every supported PHP version, a pack with assertions on the payload, the
-# wordpress.org Plugin Check on that payload, and a check that the version carriers
-# agree. Called on pull requests to main.
+# wordpress.org Plugin Check on that payload, a check that the version carriers agree,
+# and a warning when .github/dependabot.yml isn't the shared template. Called on pull
+# requests to main.
 
 on:
   workflow_call:
@@ -241,3 +242,25 @@ jobs:
 
       - name: Check version numbers
         run: bash "$TOOLS/check-version.sh"
+
+  dependabot:
+    name: Dependabot config matches the template
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check out the release scripts
+        uses: actions/checkout@v7
+        with:
+          repository: palasthotel/github-workflows
+          ref: ${{ inputs.tools-ref }}
+          path: .github-workflows
+
+      # A warning, not a failure: the template changes in this repository, and every
+      # plugin would fail its next pull request until it is regenerated.
+      - name: Compare with the template
+        run: |
+          bash .github-workflows/dependabot/bin/generate.sh . "$RUNNER_TEMP/dependabot.yml" >/dev/null
+          if ! diff -u .github/dependabot.yml "$RUNNER_TEMP/dependabot.yml"; then
+            echo "::warning file=.github/dependabot.yml::differs from the template of palasthotel/github-workflows - regenerate it with dependabot/bin/generate.sh, see docs/dependabot.md"
+          fi

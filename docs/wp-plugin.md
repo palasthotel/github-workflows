@@ -13,7 +13,7 @@ Push to main
     │
     │    any PR to main
     └──▶ wp-plugin-pr.yml               php -l, pack + payload assertions, Plugin Check,
-                                        version carriers agree
+                                        version carriers agree, dependabot.yml = template
 
 Merge the release PR  →  release-please tags vX.Y.Z and creates the GitHub release
     │
@@ -35,6 +35,7 @@ The scripts behind them are in [`wp-plugin/bin/`](../wp-plugin/bin) and are test
 .github/workflows/update-plugin-version.yml │
 .github/workflows/wordpress-svn-release.yml ┘
 .github/workflows/sbom.yml                   the SBOMs, see sbom.md
+.github/dependabot.yml                       generated, see dependabot.md
 release-please-config.json
 .release-please-manifest.json
 package.json or version.txt                  the version release-please maintains
