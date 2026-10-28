@@ -1,0 +1,178 @@
+---
+name: WordPress plugin - SBOM
+
+# Builds and packs the plugin like the deploy and writes the CycloneDX SBOMs of what
+# ships - the npm packages webpack bundled and the composer packages of the payload -
+# attaches them to the GitHub release and hands them to dependency-track-upload.yml as
+# the artifact "sbom".
+#
+# A workflow of its own, not a step of the deploy: an SBOM that can't be made must not
+# stop a release, and a released version can get its SBOM later by workflow_dispatch -
+# see docs/sbom.md.
+
+on:
+  workflow_call:
+    inputs:
+      slug:
+        description: "wordpress.org slug - the payload is build/<slug>/"
+        required: true
+        type: string
+      version:
+        description: "Version without the leading v; empty means the tag that triggered the run"
+        required: false
+        type: string
+        default: ""
+      root:
+        required: false
+        type: string
+        default: "."
+      plugin-dir:
+        required: false
+        type: string
+        default: "public"
+      main-file:
+        required: false
+        type: string
+        default: ""
+      build-command:
+        description: "The same as for the deploy"
+        required: false
+        type: string
+        default: ""
+      exclude:
+        description: "The same as for the deploy"
+        required: false
+        type: string
+        default: ""
+      composer-include-dev:
+        description: "Keep require-dev in the composer SBOM - for a dependency that ships in another form, e.g. prefixed by Strauss"
+        required: false
+        type: boolean
+        default: false
+      attach-to-release:
+        description: "Attach the SBOMs to the GitHub release of the version"
+        required: false
+        type: boolean
+        default: true
+      node-version:
+        required: false
+        type: string
+        default: "24.x"
+      php-version:
+        required: false
+        type: string
+        default: "8.1"
+      cyclonedx-composer-version:
+        description: "Version of the composer plugin cyclonedx/cyclonedx-php-composer"
+        required: false
+        type: string
+        default: "6.2.0"
+      tools-ref:
+        required: false
+        type: string
+        default: "v1"
+    outputs:
+      sboms:
+        description: "The SBOMs written, e.g. \"composer npm\"; empty when the plugin ships no third-party package"
+        value: ${{ jobs.sbom.outputs.sboms }}
+      version:
+        description: "The version the SBOMs describe"
+        value: ${{ jobs.sbom.outputs.version }}
+
+permissions:
+  contents: write
+
+jobs:
+  sbom:
+    name: SBOM
+    runs-on: ubuntu-latest
+    outputs:
+      sboms: ${{ steps.sbom.outputs.sboms }}
+      version: ${{ steps.version.outputs.version }}
+    env:
+      # One line on purpose: a folded block scalar would keep line breaks inside ${{ }}
+      RELEASE_TAG: ${{ inputs.version != '' && format('v{0}', inputs.version) || github.ref_name }}
+      SLUG: ${{ inputs.slug }}
+      ROOT: ${{ inputs.root }}
+      PLUGIN_DIR: ${{ inputs.plugin-dir }}
+      MAIN_FILE: ${{ inputs.main-file }}
+      EXCLUDE: ${{ inputs.exclude }}
+      COMPOSER_INCLUDE_DEV: ${{ inputs.composer-include-dev }}
+      TOOLS: ${{ github.workspace }}/.github-workflows/wp-plugin/bin
+    steps:
+      - name: Version from the tag
+        id: version
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "🤖 SBOM of $SLUG $VERSION"
+
+      # The tag, also on a dispatch run: the SBOM describes what was released
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Check out the release scripts
+        uses: actions/checkout@v7
+        with:
+          repository: palasthotel/github-workflows
+          ref: ${{ inputs.tools-ref }}
+          path: .github-workflows
+
+      - uses: actions/setup-node@v7
+        if: inputs.build-command != ''
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Build
+        if: inputs.build-command != ''
+        working-directory: ${{ inputs.root }}
+        run: ${{ inputs.build-command }}
+
+      - name: Does the payload need composer?
+        id: composer
+        run: |
+          if [[ -f "$ROOT/$PLUGIN_DIR/composer.json" ]]; then echo "needed=true" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: shivammathur/setup-php@v2
+        if: steps.composer.outputs.needed == 'true'
+        with:
+          php-version: ${{ inputs.php-version }}
+          tools: composer
+
+      - name: Install the CycloneDX composer plugin
+        if: steps.composer.outputs.needed == 'true'
+        env:
+          CYCLONEDX_COMPOSER_VERSION: ${{ inputs.cyclonedx-composer-version }}
+        run: |
+          composer global config --no-interaction allow-plugins.cyclonedx/cyclonedx-php-composer true
+          composer global require --no-interaction --quiet "cyclonedx/cyclonedx-php-composer:$CYCLONEDX_COMPOSER_VERSION"
+
+      - name: Pack
+        run: bash "$TOOLS/pack.sh"
+
+      - name: SBOM
+        id: sbom
+        run: |
+          bash "$TOOLS/sbom.sh"
+          sboms="$(cd "$ROOT/sbom" && find . -name 'sbom-*.cdx.json' | sed -E 's#^\./sbom-(.*)\.cdx\.json$#\1#' | sort | xargs)"
+          echo "sboms=$sboms" >> "$GITHUB_OUTPUT"
+          echo "🤖 SBOMs: ${sboms:-none - the plugin ships no third-party package}"
+
+      - name: Attach the SBOMs to the release
+        if: steps.sbom.outputs.sboms != '' && inputs.attach-to-release
+        uses: softprops/action-gh-release@v3
+        with:
+          # Explicit, because on a dispatch run github.ref is a branch
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: ${{ inputs.root }}/sbom/sbom-*.cdx.json
+
+      - name: Hand the SBOMs to Dependency-Track
+        if: steps.sbom.outputs.sboms != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: ${{ inputs.root }}/sbom/sbom-*.cdx.json
+          if-no-files-found: error
+          retention-days: 30

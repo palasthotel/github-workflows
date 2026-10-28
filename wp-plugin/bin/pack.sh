@@ -23,14 +23,17 @@ echo "Staging $PLUGIN_DIR in build/$SLUG/ ..."
 rm -rf "$BUILD_PATH" "$ZIP_PATH"
 mkdir -p "$DEST_PATH"
 
-RSYNC_EXCLUDES=()
+# cyclonedx/ is what @cyclonedx/webpack-plugin writes next to the bundles: the SBOM of
+# the build, which sbom.sh reads from PLUGIN_DIR. It describes the release, it isn't
+# part of it.
+RSYNC_EXCLUDES=(--exclude=cyclonedx/)
 while IFS= read -r pattern; do
   [[ -n "${pattern//[[:space:]]/}" ]] && RSYNC_EXCLUDES+=("--exclude=$pattern")
 done <<< "${EXCLUDE:-}"
 
 # -L resolves symlinks into real files: wordpress.org discards symlinks when it builds
 # the download, and SVN refuses a commit that puts a symlink where it versions a file.
-rsync -rL ${RSYNC_EXCLUDES[@]+"${RSYNC_EXCLUDES[@]}"} "$PLUGIN_PATH/" "$DEST_PATH/"
+rsync -rL "${RSYNC_EXCLUDES[@]}" "$PLUGIN_PATH/" "$DEST_PATH/"
 
 # A composer.json in the payload: install without dev dependencies and write an
 # optimized autoloader. composer.json and composer.lock stay in the payload: nothing

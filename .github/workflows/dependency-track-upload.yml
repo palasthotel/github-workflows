@@ -1,0 +1,64 @@
+---
+name: Dependency-Track - upload SBOMs
+
+# Sends the CycloneDX SBOMs of the artifact "sbom" (sbom-<kind>.cdx.json, e.g. from
+# wp-plugin-sbom.yml) to Dependency-Track, one project per kind:
+# "<owner>/<repository> (<kind>)" in version <version>, under the parent of the latest
+# version.
+#
+# Authenticates with the GitHub OIDC token of the job, exchanged for a session of the
+# service account - no stored secret. The caller has to grant id-token: write.
+#
+# The instance is fixed here and can't be changed by the caller on purpose: the binding
+# in Dependency-Track trusts the token because this workflow sent it (job_workflow_ref).
+# A caller that could set the URL could send the token elsewhere and replay it, and one
+# that could set the project name could overwrite another repository's SBOM. See
+# docs/sbom.md.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Version of the project in Dependency-Track"
+        required: true
+        type: string
+      artifact:
+        required: false
+        type: string
+        default: "sbom"
+      tools-ref:
+        required: false
+        type: string
+        default: "v1"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  upload:
+    name: Upload to Dependency-Track
+    runs-on: ubuntu-latest
+    env:
+      DT_URL: https://api.hausmeister.palasthotel.de
+      DT_AUDIENCE: https://api.hausmeister.palasthotel.de
+      DT_PROVIDER: github-actions
+      DT_ACCOUNT: ci-github
+      PROJECT: ${{ github.repository }}
+      VERSION: ${{ inputs.version }}
+      SBOM_DIR: sbom
+    steps:
+      - name: Check out the upload script
+        uses: actions/checkout@v7
+        with:
+          repository: palasthotel/github-workflows
+          ref: ${{ inputs.tools-ref }}
+          path: .github-workflows
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.artifact }}
+          path: sbom
+
+      - name: Upload
+        run: bash .github-workflows/dependency-track/bin/upload.sh

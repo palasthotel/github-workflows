@@ -17,8 +17,11 @@ Push to main
 
 Merge the release PR  →  release-please tags vX.Y.Z and creates the GitHub release
     │
-    └── v* tag ──▶ wp-plugin-svn-deploy.yml   version check → build → pack → zip to the release
-                                             → trunk + tags/X.Y.Z in the wordpress.org SVN
+    ├── v* tag ──▶ wp-plugin-svn-deploy.yml   version check → build → pack → zip to the release
+    │                                        → trunk + tags/X.Y.Z in the wordpress.org SVN
+    │
+    └── v* tag ──▶ wp-plugin-sbom.yml         build → pack → SBOMs to the release
+                   └─▶ dependency-track-upload.yml   → Dependency-Track, see sbom.md
 ```
 
 The scripts behind them are in [`wp-plugin/bin/`](../wp-plugin/bin) and are tested by
@@ -31,6 +34,7 @@ The scripts behind them are in [`wp-plugin/bin/`](../wp-plugin/bin) and are test
 .github/workflows/release-please.yml        │ the four callers below
 .github/workflows/update-plugin-version.yml │
 .github/workflows/wordpress-svn-release.yml ┘
+.github/workflows/sbom.yml                   the SBOMs, see sbom.md
 release-please-config.json
 .release-please-manifest.json
 package.json or version.txt                  the version release-please maintains
@@ -183,7 +187,8 @@ where they are left empty.
 
 The payload check always requires the main file, the readme and `LICENSE`, and rejects
 symlinks, `.github`, `bin`, `node_modules`, `package.json`, `package-lock.json`,
-`CONTRIBUTING.md` and `CHANGELOG.md`.
+`CONTRIBUTING.md`, `CHANGELOG.md` and the `cyclonedx/` directories of the webpack SBOM,
+which `pack.sh` leaves out anyway ([sbom.md](sbom.md)).
 
 ## Plugin Check
 
