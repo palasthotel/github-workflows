@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.6.0](https://github.com/palasthotel/github-workflows/compare/v1.5.0...v1.6.0) (2026-10-28)
+
+
+### Features
+
+* one Dependabot config for every repository ([54752f1](https://github.com/palasthotel/github-workflows/commit/54752f165a24aadd63237d72aea30daac5c1eae3))
+* one Dependabot config for every repository ([5c4c054](https://github.com/palasthotel/github-workflows/commit/5c4c0548dab61636934bb12db054a8286c2d34ad))
+
 ## [1.5.0](https://github.com/palasthotel/github-workflows/compare/v1.4.0...v1.5.0) (2026-10-28)
 
 
