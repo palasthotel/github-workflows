@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.0](https://github.com/palasthotel/github-workflows/compare/v1.6.0...v1.7.0) (2026-10-28)
+
+
+### Features
+
+* **dependency-track:** tag new project versions as library ([72c1355](https://github.com/palasthotel/github-workflows/commit/72c13553d3d1fd6ae0336bafdf1749b8e1a9a29b))
+* **dependency-track:** tag new project versions as library ([472a83c](https://github.com/palasthotel/github-workflows/commit/472a83ce9a3433daaad15fb735e31edd3fac8c2d))
+
 ## [1.6.0](https://github.com/palasthotel/github-workflows/compare/v1.5.0...v1.6.0) (2026-10-28)
 
 
