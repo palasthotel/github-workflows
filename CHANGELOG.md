@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0](https://github.com/palasthotel/github-workflows/compare/v1.3.0...v1.4.0) (2026-10-28)
+
+
+### Features
+
+* SBOMs of every release, sent to Dependency-Track ([867535f](https://github.com/palasthotel/github-workflows/commit/867535f9199a0bc2d3631c49ccb3901f4d54e66d))
+* SBOMs of every release, sent to Dependency-Track ([a63de67](https://github.com/palasthotel/github-workflows/commit/a63de67dd2517e1405f0583ccff008d475fa3efb))
+
 ## [1.3.0](https://github.com/palasthotel/github-workflows/compare/v1.2.0...v1.3.0) (2026-10-14)
 
 
