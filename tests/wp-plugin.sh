@@ -221,6 +221,18 @@ svn up -q "$WORK/wc"
 (cd "$P" && VERSION=1.2.5 SLUG=my-plugin SVN_DIR="$WORK/wc" bash "$BIN/svn-prepare.sh" >/dev/null 2>&1)
 svn commit -q -m release --non-interactive "$WORK/wc" >/dev/null 2>&1
 expect "mirrors assets/ when the repository has it" bash -c "svn ls 'file://$WORK/repo/assets' | grep -q banner-772x250.png && ! svn ls 'file://$WORK/repo/assets' | grep -q icon-128x128.png"
+# blockX: the plugin in wp-plugin/, the page media next to it in the repository root,
+# and the deploy passes ASSETS_DIR relative to the root - while the script works in SVN_DIR
+M="$(fixture svn-monorepo)"
+mkdir -p "$M/wp-plugin" && mv "$M/public" "$M/package.json" "$M/wp-plugin/"
+mkdir -p "$M/assets" && echo "icon" > "$M/assets/icon-256x256.png"
+(cd "$M" && ROOT=wp-plugin SLUG=my-plugin bash "$BIN/pack.sh" >/dev/null 2>&1)
+svnadmin create "$WORK/mono-repo"
+mkdir -p "$WORK/mono-seed/trunk" "$WORK/mono-seed/tags"
+svn import -q -m seed "$WORK/mono-seed" "file://$WORK/mono-repo"
+svn co -q "file://$WORK/mono-repo" "$WORK/mono-wc"
+(cd "$M" && ROOT=wp-plugin ASSETS_DIR=assets VERSION=1.2.3 SLUG=my-plugin SVN_DIR="$WORK/mono-wc" bash "$BIN/svn-prepare.sh" >/dev/null 2>&1)
+expect "takes a relative ASSETS_DIR from where it is called" test -f "$WORK/mono-wc/assets/icon-256x256.png"
 
 echo "svn-checkout.sh"
 # The repository from above now holds tags/1.2.4 and tags/1.2.5.

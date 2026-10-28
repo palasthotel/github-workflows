@@ -6,7 +6,8 @@
 #
 # Usage: VERSION=1.2.3 SLUG=my-plugin SVN_DIR=svn svn-prepare.sh
 #   BUILD_DIR   the staged payload        (default: ROOT/build/SLUG)
-#   ASSETS_DIR  wordpress.org page media  (default: ROOT/assets, if it exists)
+#   ASSETS_DIR  wordpress.org page media  (default: ROOT/assets, if it exists);
+#               a relative path is relative to where the script is called
 set -euo pipefail
 # shellcheck source=lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -17,6 +18,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 ROOT="$(cd "${ROOT:-.}" && pwd)"
 BUILD_DIR="$(cd "${BUILD_DIR:-$ROOT/build/$SLUG}" && pwd)" || wp_plugin_die "no staged payload - run pack.sh first"
 ASSETS_DIR="${ASSETS_DIR:-$ROOT/assets}"
+[[ "$ASSETS_DIR" == /* ]] || ASSETS_DIR="$PWD/$ASSETS_DIR"
 
 cd "$SVN_DIR"
 rm -rf trunk/* "tags/$VERSION"
