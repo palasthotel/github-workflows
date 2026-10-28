@@ -9,8 +9,10 @@ Work on a branch and open a pull request against `main`.
 2. **A real repository ran the branch.** Point one plugin repository's callers at the
    branch - both the ref after `@` and `tools-ref` - and let its PR checks run. For a
    change to the deploy, run its `wordpress-svn-release.yml` by **Run workflow** with the
-   version that is already released: deploying an unchanged version commits nothing to
-   SVN, so it exercises the whole chain without publishing anything new.
+   version that is already released and `dry-run: true` in the caller. It runs the whole
+   chain up to the SVN commit and shows what that would contain. Without it, a branch
+   whose lock files moved on since the release rebuilds the bundles and changes
+   `tags/<version>` in place.
    `wp-emoji-guard` is the usual pilot: no build step, no composer, and its SVN still has
    the symlinks that broke a release elsewhere.
 3. **A new test for a new failure.** Every case in `tests/wp-plugin.sh` is something that

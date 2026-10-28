@@ -59,6 +59,11 @@ on:
         required: false
         type: string
         default: ""
+      dry-run:
+        description: "Everything up to the SVN commit, which is only shown - for trying out a change to the deploy on a released version"
+        required: false
+        type: boolean
+        default: false
       node-version:
         required: false
         type: string
@@ -145,6 +150,7 @@ jobs:
         run: bash "$TOOLS/pack.sh"
 
       - name: Attach the zip to the release
+        if: ${{ ! inputs.dry-run }}
         uses: softprops/action-gh-release@v3
         continue-on-error: true
         with:
@@ -170,7 +176,16 @@ jobs:
       - name: Prepare trunk and tags/${{ env.VERSION }}
         run: SVN_DIR=svn bash "$TOOLS/svn-prepare.sh"
 
+      # The dry run stops here: a released version rebuilt from a later commit, e.g.
+      # with updated dependencies, would otherwise change tags/<version> in place.
+      - name: What the commit contains
+        working-directory: svn
+        run: |
+          changes="$(svn status)"
+          echo "${changes:-nothing - trunk and tags/$VERSION are unchanged}"
+
       - name: Commit to SVN
+        if: ${{ ! inputs.dry-run }}
         env:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
@@ -185,4 +200,5 @@ jobs:
         run: rm -rf svn
 
       - name: Done
+        if: ${{ ! inputs.dry-run }}
         run: echo "🤖 $SLUG $VERSION deployed to https://wordpress.org/plugins/$SLUG/ 🚀"
