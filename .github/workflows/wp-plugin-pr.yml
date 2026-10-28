@@ -173,6 +173,11 @@ jobs:
             [[ ! -e "$payload/$file" ]] || { echo "::error::$file must not be in the payload"; fail=1; }
           done
 
+          # the SBOM of the webpack build describes the release, it doesn't ship
+          if [[ -n "$(find "$payload" -type d -name cyclonedx)" ]]; then
+            echo "::error::the payload contains a webpack SBOM:"; find "$payload" -type d -name cyclonedx; fail=1
+          fi
+
           # wordpress.org discards symlinks when it builds the download
           if [[ -n "$(find "$payload" -type l)" ]]; then
             echo "::error::the payload contains symlinks:"; find "$payload" -type l; fail=1

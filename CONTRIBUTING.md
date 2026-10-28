@@ -19,8 +19,8 @@ Work on a branch and open a pull request against `main`.
 Run the checks locally:
 
 ```sh
-bash tests/wp-plugin.sh                                    # needs rsync, zip, python3, svn
-docker run --rm -v "$PWD":/mnt -w /mnt koalaman/shellcheck:stable -x wp-plugin/bin/*.sh tests/*.sh
+bash tests/wp-plugin.sh                                    # needs rsync, zip, python3, svn, jq
+docker run --rm -v "$PWD":/mnt -w /mnt koalaman/shellcheck:stable -x wp-plugin/bin/*.sh dependency-track/bin/*.sh tests/*.sh
 docker run --rm -v "$PWD":/repo -w /repo rhysd/actionlint:latest
 ```
 

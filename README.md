@@ -9,7 +9,8 @@ repositories call them.
 
 | Family | Workflows | Documentation |
 |---|---|---|
-| WordPress plugins | `wp-plugin-pr.yml`, `wp-plugin-release-please.yml`, `wp-plugin-sync-version.yml`, `wp-plugin-svn-deploy.yml` | [docs/wp-plugin.md](docs/wp-plugin.md) |
+| WordPress plugins | `wp-plugin-pr.yml`, `wp-plugin-release-please.yml`, `wp-plugin-sync-version.yml`, `wp-plugin-svn-deploy.yml`, `wp-plugin-sbom.yml` | [docs/wp-plugin.md](docs/wp-plugin.md), [docs/sbom.md](docs/sbom.md) |
+| Dependency-Track | `dependency-track-upload.yml` | [docs/sbom.md](docs/sbom.md) |
 
 ## Using a workflow
 
@@ -43,6 +44,7 @@ credentials stay in the calling repositories and are passed with `secrets: inher
 | `.github/workflows/wp-plugin-*.yml` | the reusable workflows - GitHub requires them directly in `.github/workflows/`, hence the prefix per family |
 | `.github/workflows/ci.yml`, `release-please.yml` | this repository's own checks and releases |
 | `wp-plugin/bin/` | the scripts the WordPress workflows run |
+| `dependency-track/bin/` | the upload script of `dependency-track-upload.yml` |
 | `tests/` | tests for the scripts, run by CI |
 | `docs/` | one page per family |
 

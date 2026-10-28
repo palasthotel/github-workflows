@@ -138,6 +138,55 @@ else
   echo "  skip composer cases (composer not installed)"
 fi
 
+# @cyclonedx/webpack-plugin writes bom.json and bom.xml next to each build's bundles
+webpack_sbom() { # dir, component purls...
+  local dir="$1" purl components=""; shift
+  mkdir -p "$dir"
+  for purl in "$@"; do
+    components+="${components:+,}{ \"bom-ref\": \"$purl\", \"purl\": \"$purl\", \"name\": \"${purl#pkg:npm/}\" }"
+  done
+  cat > "$dir/bom.json" <<JSON
+{ "bomFormat": "CycloneDX", "specVersion": "1.6",
+  "metadata": { "component": { "bom-ref": "root", "name": "my-plugin" } },
+  "components": [ $components ],
+  "dependencies": [ { "ref": "root", "dependsOn": [ $(printf '"%s",' "$@" | sed 's/,$//') ] } ] }
+JSON
+  echo "<bom/>" > "$dir/bom.xml"
+}
+P="$(fixture pack-sbom)"
+webpack_sbom "$P/public/dist/cyclonedx" pkg:npm/jss@10.10.0
+(cd "$P" && SLUG=my-plugin bash "$BIN/pack.sh" >/dev/null 2>&1)
+expect "keeps the webpack SBOM out of the payload" test ! -e "$P/build/my-plugin/dist/cyclonedx"
+expect "keeps the webpack SBOM in the plugin dir for sbom.sh" test -f "$P/public/dist/cyclonedx/bom.json"
+
+echo "sbom.sh"
+expect_not "refuses to run without VERSION" bash -c "cd '$P' && SLUG=my-plugin bash '$BIN/sbom.sh'"
+webpack_sbom "$P/public/dist/blocks/cyclonedx" pkg:npm/jss@10.10.0 pkg:npm/date-fns@4.4.0 pkg:npm/css-loader@6.11.0
+webpack_sbom "$P/public/node_modules/some-package/cyclonedx" pkg:npm/left-pad@1.3.0
+(cd "$P" && SLUG=my-plugin VERSION=1.2.4 bash "$BIN/sbom.sh" >/dev/null 2>&1)
+NPM_SBOM="$P/sbom/sbom-npm.cdx.json"
+expect "merges the SBOMs of every webpack build" test "$(jq -c '[.components[].name]' "$NPM_SBOM" 2>/dev/null)" = '["date-fns@4.4.0","jss@10.10.0"]'
+expect "drops css-loader, whose runtime only runs during the build" test "$(jq '[.. | strings | select(contains("css-loader"))] | length' "$NPM_SBOM" 2>/dev/null)" = 0
+expect "sets the released version" test "$(jq -r '.metadata.component.version' "$NPM_SBOM" 2>/dev/null)" = 1.2.4
+expect "joins the dependencies of one ref" test "$(jq -c '.dependencies' "$NPM_SBOM" 2>/dev/null)" = '[{"ref":"root","dependsOn":["pkg:npm/date-fns@4.4.0","pkg:npm/jss@10.10.0"]}]'
+P="$(fixture sbom-empty)"
+webpack_sbom "$P/public/dist/cyclonedx"
+(cd "$P" && SLUG=my-plugin bash "$BIN/pack.sh" >/dev/null 2>&1)
+expect "writes no SBOM when nothing is bundled" bash -c "cd '$P' && SLUG=my-plugin VERSION=1.2.3 bash '$BIN/sbom.sh' && test -z \"\$(ls sbom)\""
+
+# The composer SBOM needs the composer plugin, which CI installs
+if command -v composer >/dev/null && composer CycloneDX:make-sbom --help >/dev/null 2>&1; then
+  P="$(fixture sbom-composer)"
+  cat > "$P/public/composer.json" <<'JSON'
+{ "name": "palasthotel/my-plugin", "autoload": { "psr-4": { "MyPlugin\\": "inc/" } } }
+JSON
+  (cd "$P" && SLUG=my-plugin bash "$BIN/pack.sh" >/dev/null 2>&1)
+  expect "writes no composer SBOM for a composer.json with only an autoloader" bash -c "cd '$P' && SLUG=my-plugin VERSION=1.2.3 bash '$BIN/sbom.sh' && test ! -e sbom/sbom-composer.cdx.json"
+  expect_not "refuses COMPOSER_INCLUDE_DEV without a composer.lock in the plugin dir" bash -c "cd '$P' && SLUG=my-plugin VERSION=1.2.3 COMPOSER_INCLUDE_DEV=true bash '$BIN/sbom.sh'"
+else
+  echo "  skip composer SBOM cases (composer plugin cyclonedx/cyclonedx-php-composer not installed)"
+fi
+
 echo "svn-prepare.sh"
 # Seed an SVN repository the way wordpress.org has it for an old release: the Swiss
 # translations committed as symlinks (svn:special), page media in assets/.

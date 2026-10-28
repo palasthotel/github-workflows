@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: shellcheck
-        run: shellcheck -x wp-plugin/bin/*.sh tests/*.sh
+        run: shellcheck -x wp-plugin/bin/*.sh dependency-track/bin/*.sh tests/*.sh
 
   actionlint:
     runs-on: ubuntu-latest
@@ -40,5 +40,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y subversion
+      - name: Install the CycloneDX composer plugin
+        run: |
+          composer global config --no-interaction allow-plugins.cyclonedx/cyclonedx-php-composer true
+          composer global require --no-interaction --quiet cyclonedx/cyclonedx-php-composer:6.2.0
       - name: wp-plugin scripts
         run: bash tests/wp-plugin.sh
