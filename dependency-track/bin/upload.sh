@@ -20,6 +20,9 @@
 #   DT_ACCOUNT                  name of the service account
 #   DT_AUDIENCE                 audience of the OIDC token, as the provider expects it
 #   PROJECT, VERSION            project name prefix (owner/repository) and version
+#   PROJECT_TAGS                comma-separated tags of a new version, e.g. library - the
+#                               policies of Dependency-Track are assigned by tag. Only
+#                               applied when the upload creates the project version
 #   SBOM_DIR                    (default: sbom)
 #
 # Credentials go to curl in files, never on the command line or into the log.
@@ -112,7 +115,7 @@ for sbom in "${SBOMS[@]}"; do
   kind="${sbom##*/sbom-}"
   kind="${kind%.cdx.json}"
   name="$PROJECT ($kind)"
-  echo "$sbom → $DT_URL: $name $VERSION"
+  echo "$sbom → $DT_URL: $name $VERSION${PROJECT_TAGS:+, tags $PROJECT_TAGS}"
 
   # Parent of the latest version, by name as a query parameter: the names contain
   # slashes, which many servers refuse encoded in a path.
@@ -132,10 +135,13 @@ for sbom in "${SBOMS[@]}"; do
     echo "::warning::Latest version of $name not readable, uploading without a parent."
   fi
 
+  tags=()
+  [[ -n "${PROJECT_TAGS:-}" ]] && tags=(--form "projectTags=$PROJECT_TAGS")
+
   if ! answer="$(dt_call POST "$DT_URL/api/v1/bom" --header "@$WORK/headers" \
     --form "autoCreate=true" --form "isLatest=true" \
     --form "projectName=$name" --form "projectVersion=$VERSION" \
-    ${parent[@]+"${parent[@]}"} --form "bom=@$sbom")"; then
+    ${parent[@]+"${parent[@]}"} ${tags[@]+"${tags[@]}"} --form "bom=@$sbom")"; then
     failed=1
     continue
   fi
