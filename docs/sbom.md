@@ -153,6 +153,12 @@ released one, marked as the latest. A new version is created under the parent of
 latest one: move the first version of a project under a parent such as "WordPress
 plugins" once, and the following ones land there too.
 
+Every new version is tagged `library`: the policies of Dependency-Track are assigned by
+tag, and what we publish as open source is a library to the sites that install it - its
+findings are judged differently from those of a site we run. `project-tags` takes another
+comma-separated list. Dependency-Track only applies tags when the upload creates the
+version, so a version that existed before keeps the tags it has; tag those by hand.
+
 The job authenticates with workload identity federation: GitHub's OIDC token of the job,
 with the audience `https://api.hausmeister.palasthotel.de`, is exchanged for a session of
 the service account `ci-github` via the workload identity provider `github-actions`. No
