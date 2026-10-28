@@ -80,8 +80,9 @@ module.exports = Array.isArray( defaultConfig )
 
 ### The caller
 
-`.github/workflows/sbom.yml` - `slug`, `build-command` and `exclude` as in
-`wordpress-svn-release.yml`:
+`.github/workflows/sbom.yml` - `slug`, `build-command`, `exclude` and the other inputs
+as in `wordpress-svn-release.yml`, `tag-prefix` included (and the `tags:` pattern to
+match):
 
 ```yaml
 name: SBOM
@@ -132,7 +133,7 @@ added gets a composer SBOM only.
 ### Inputs of wp-plugin-sbom.yml
 
 `slug`, `version`, `root`, `plugin-dir`, `main-file`, `build-command`, `exclude`,
-`node-version`, `php-version` and `tools-ref` as in [the deploy](wp-plugin.md#inputs),
+`node-version`, `php-version`, `tag-prefix` and `tools-ref` as in [the deploy](wp-plugin.md#inputs),
 and:
 
 | Input | Default | Meaning |
@@ -172,7 +173,7 @@ this workflow, from releases and the default branch:
 | | |
 |---|---|
 | Subject | `repo:palasthotel@4201000/*` - the immutable subject with the organisation's ID, so a deleted repository can't be recreated under its name and inherit its access |
-| Condition | `claims.job_workflow_ref.startsWith("palasthotel/github-workflows/.github/workflows/dependency-track-upload.yml@") && (claims.ref == "refs/heads/main" \|\| claims.ref.startsWith("refs/tags/v"))` |
+| Condition | `(claims.job_workflow_ref.startsWith("palasthotel/github-workflows/.github/workflows/dependency-track-upload.yml@") \|\| claims.job_workflow_ref.startsWith("palasthotel@4201000/github-workflows@1401352495/.github/workflows/dependency-track-upload.yml@")) && (claims.ref == "refs/heads/main" \|\| claims.ref.startsWith("refs/tags/v") \|\| claims.ref.startsWith("refs/tags/plugin-v"))` - `job_workflow_ref` in both forms GitHub may send it, the tags with both prefixes in use |
 
 A repository that still sends the old subject (`repo:palasthotel/<name>`) has to switch
 to the immutable one before its upload works (REST API

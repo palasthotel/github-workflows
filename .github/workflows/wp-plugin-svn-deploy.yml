@@ -4,8 +4,8 @@ name: WordPress plugin - deploy to WordPress.org
 # Packs the plugin, attaches the zip to the GitHub release and commits the same
 # payload to trunk and tags/<version> in the plugin's wordpress.org SVN.
 #
-# Called by the plugin repository on a v* tag, or by workflow_dispatch with a version
-# to re-run a failed deploy - see docs/wp-plugin.md.
+# Called by the plugin repository on a release tag (v*, or tag-prefix*), or by
+# workflow_dispatch with a version to re-run a failed deploy - see docs/wp-plugin.md.
 
 on:
   workflow_call:
@@ -15,10 +15,15 @@ on:
         required: true
         type: string
       version:
-        description: "Version to deploy without the leading v; empty means the tag that triggered the run"
+        description: "Version to deploy without the tag prefix; empty means the tag that triggered the run"
         required: false
         type: string
         default: ""
+      tag-prefix:
+        description: "What comes before the version in the release tags, e.g. plugin-v in a repository that tags other packages too"
+        required: false
+        type: string
+        default: "v"
       root:
         description: "The plugin project inside the repository"
         required: false
@@ -49,6 +54,16 @@ on:
         required: false
         type: string
         default: ""
+      assets-dir:
+        description: "The plugin page's banner, icons and screenshots, relative to the repository root; empty means <root>/assets"
+        required: false
+        type: string
+        default: ""
+      dry-run:
+        description: "Everything up to the SVN commit, which is only shown - for trying out a change to the deploy on a released version"
+        required: false
+        type: boolean
+        default: false
       node-version:
         required: false
         type: string
@@ -78,18 +93,22 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # One line on purpose: a folded block scalar would keep line breaks inside ${{ }}
-      RELEASE_TAG: ${{ inputs.version != '' && format('v{0}', inputs.version) || github.ref_name }}
+      RELEASE_TAG: ${{ inputs.version != '' && format('{0}{1}', inputs.tag-prefix, inputs.version) || github.ref_name }}
+      TAG_PREFIX: ${{ inputs.tag-prefix }}
       SLUG: ${{ inputs.slug }}
       ROOT: ${{ inputs.root }}
       PLUGIN_DIR: ${{ inputs.plugin-dir }}
       MAIN_FILE: ${{ inputs.main-file }}
       VERSION_FILE: ${{ inputs.version-file }}
       EXCLUDE: ${{ inputs.exclude }}
+      ASSETS_DIR: ${{ inputs.assets-dir }}
       TOOLS: ${{ github.workspace }}/.github-workflows/wp-plugin/bin
     steps:
       - name: Version from the tag
         run: |
-          VERSION="${RELEASE_TAG#v}"
+          # A tag of another package of the repository, or a typo in the dispatch
+          [[ "$RELEASE_TAG" == "$TAG_PREFIX"* ]] || { echo "::error::$RELEASE_TAG does not start with $TAG_PREFIX"; exit 1; }
+          VERSION="${RELEASE_TAG#"$TAG_PREFIX"}"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "🤖 Deploying $SLUG $VERSION"
 
@@ -131,6 +150,7 @@ jobs:
         run: bash "$TOOLS/pack.sh"
 
       - name: Attach the zip to the release
+        if: ${{ ! inputs.dry-run }}
         uses: softprops/action-gh-release@v3
         continue-on-error: true
         with:
@@ -156,7 +176,16 @@ jobs:
       - name: Prepare trunk and tags/${{ env.VERSION }}
         run: SVN_DIR=svn bash "$TOOLS/svn-prepare.sh"
 
+      # The dry run stops here: a released version rebuilt from a later commit, e.g.
+      # with updated dependencies, would otherwise change tags/<version> in place.
+      - name: What the commit contains
+        working-directory: svn
+        run: |
+          changes="$(svn status)"
+          echo "${changes:-nothing - trunk and tags/$VERSION are unchanged}"
+
       - name: Commit to SVN
+        if: ${{ ! inputs.dry-run }}
         env:
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
@@ -171,4 +200,5 @@ jobs:
         run: rm -rf svn
 
       - name: Done
+        if: ${{ ! inputs.dry-run }}
         run: echo "🤖 $SLUG $VERSION deployed to https://wordpress.org/plugins/$SLUG/ 🚀"

@@ -175,6 +175,9 @@ where they are left empty.
 | `version-file` | detected | `version.txt` if it exists, else `package.json` |
 | `build-command` | none | runs in `root` before packing, e.g. `npm ci && npm run build` (pr, deploy) |
 | `exclude` | none | newline-separated rsync patterns kept out of the payload (pr, deploy) |
+| `tag-prefix` | `v` | what comes before the version in the release tags (deploy, sbom). A repository that releases more than the plugin tags it `plugin-v1.2.3` - set `plugin-v` here and in the caller's `on: push: tags:` |
+| `assets-dir` | `<root>/assets` | the plugin page's banner, icons and screenshots, relative to the repository root - e.g. `assets` when the plugin lives in `wp-plugin/` (deploy) |
+| `dry-run` | `false` | build, pack, check out and prepare SVN, and show what the commit would contain - without the commit and without touching the GitHub release (deploy) |
 | `required-files` | none | newline-separated paths that must be in the payload - list what `wp_enqueue_script` loads, so a renamed build output fails the PR instead of 404ing in wp-admin (pr) |
 | `dev-plugin-name` | none | the development wrapper's `Plugin Name`, which must never ship (pr) |
 | `php-versions` | `["8.0", "8.1", "8.2", "8.3", "8.4", "8.5"]` | `php -l` matrix: every minor version from the plugin's `Requires PHP` up to the newest release, without gaps. `php -l` only catches syntax errors; deprecations show up as notices but do not fail the job. The default fits `Requires PHP: 8.0`; set it when the plugin requires more (pr) |

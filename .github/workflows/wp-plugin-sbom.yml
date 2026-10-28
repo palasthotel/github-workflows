@@ -18,10 +18,15 @@ on:
         required: true
         type: string
       version:
-        description: "Version without the leading v; empty means the tag that triggered the run"
+        description: "Version without the tag prefix; empty means the tag that triggered the run"
         required: false
         type: string
         default: ""
+      tag-prefix:
+        description: "What comes before the version in the release tags, e.g. plugin-v in a repository that tags other packages too"
+        required: false
+        type: string
+        default: "v"
       root:
         required: false
         type: string
@@ -91,7 +96,8 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     env:
       # One line on purpose: a folded block scalar would keep line breaks inside ${{ }}
-      RELEASE_TAG: ${{ inputs.version != '' && format('v{0}', inputs.version) || github.ref_name }}
+      RELEASE_TAG: ${{ inputs.version != '' && format('{0}{1}', inputs.tag-prefix, inputs.version) || github.ref_name }}
+      TAG_PREFIX: ${{ inputs.tag-prefix }}
       SLUG: ${{ inputs.slug }}
       ROOT: ${{ inputs.root }}
       PLUGIN_DIR: ${{ inputs.plugin-dir }}
@@ -103,7 +109,9 @@ jobs:
       - name: Version from the tag
         id: version
         run: |
-          VERSION="${RELEASE_TAG#v}"
+          # A tag of another package of the repository, or a typo in the dispatch
+          [[ "$RELEASE_TAG" == "$TAG_PREFIX"* ]] || { echo "::error::$RELEASE_TAG does not start with $TAG_PREFIX"; exit 1; }
+          VERSION="${RELEASE_TAG#"$TAG_PREFIX"}"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "🤖 SBOM of $SLUG $VERSION"
