@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: shellcheck
-        run: shellcheck -x wp-plugin/bin/*.sh dependency-track/bin/*.sh tests/*.sh
+        run: shellcheck -x wp-plugin/bin/*.sh dependency-track/bin/*.sh dependabot/bin/*.sh tests/*.sh
 
   actionlint:
     runs-on: ubuntu-latest
@@ -46,3 +46,5 @@ jobs:
           composer global require --no-interaction --quiet cyclonedx/cyclonedx-php-composer:6.2.0
       - name: wp-plugin scripts
         run: bash tests/wp-plugin.sh
+      - name: dependabot template
+        run: bash tests/dependabot.sh
