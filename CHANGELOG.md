@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.5.0](https://github.com/palasthotel/github-workflows/compare/v1.4.0...v1.5.0) (2026-10-28)
+
+
+### Features
+
+* **wp-plugin:** dry-run for the deploy ([b89db39](https://github.com/palasthotel/github-workflows/commit/b89db39b98da6ca366a291f1a94d0aee06719232))
+* **wp-plugin:** tag-prefix and assets-dir for monorepos ([fa6d9b8](https://github.com/palasthotel/github-workflows/commit/fa6d9b85d9346dd0c87aacbe54a618873ecfd4b3))
+* **wp-plugin:** tag-prefix and assets-dir for monorepos ([cf09ada](https://github.com/palasthotel/github-workflows/commit/cf09ada1b8c2a1b8e13a6372a978d94f24082584))
+
 ## [1.4.0](https://github.com/palasthotel/github-workflows/compare/v1.3.0...v1.4.0) (2026-10-28)
 
 
