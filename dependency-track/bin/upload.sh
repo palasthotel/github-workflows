@@ -20,7 +20,7 @@
 #   DT_ACCOUNT                  name of the service account
 #   DT_AUDIENCE                 audience of the OIDC token, as the provider expects it
 #   PROJECT, VERSION            project name prefix (owner/repository) and version
-#   PROJECT_TAGS                comma-separated tags of a new version, e.g. library - the
+#   PROJECT_TAGS                comma-separated tags of a new version, e.g. open-source - the
 #                               policies of Dependency-Track are assigned by tag. Only
 #                               applied when the upload creates the project version
 #   SBOM_DIR                    (default: sbom)

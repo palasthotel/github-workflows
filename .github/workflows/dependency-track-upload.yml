@@ -4,7 +4,7 @@ name: Dependency-Track - upload SBOMs
 # Sends the CycloneDX SBOMs of the artifact "sbom" (sbom-<kind>.cdx.json, e.g. from
 # wp-plugin-sbom.yml) to Dependency-Track, one project per kind:
 # "<owner>/<repository> (<kind>)" in version <version>, under the parent of the latest
-# version, tagged library unless project-tags says otherwise.
+# version, tagged open-source unless project-tags says otherwise.
 #
 # Authenticates with the GitHub OIDC token of the job, exchanged for a session of the
 # service account - no stored secret. The caller has to grant id-token: write.
@@ -27,10 +27,10 @@ on:
         type: string
         default: "sbom"
       project-tags:
-        description: "Comma-separated tags of a new project version - the policies of Dependency-Track are assigned by tag. Open source we publish is a library to whoever installs it"
+        description: "Comma-separated tags of a new project version - the policies of Dependency-Track are assigned by tag, open-source carries the license policy of what we publish"
         required: false
         type: string
-        default: "library"
+        default: "open-source"
       tools-ref:
         required: false
         type: string
