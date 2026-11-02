@@ -159,6 +159,11 @@ findings are judged differently from those of a site we run. `project-tags` take
 comma-separated list. Dependency-Track only applies tags when the upload creates the
 version, so a version that existed before keeps the tags it has; tag those by hand.
 
+For the same reason `sbom.sh` types the plugin - the main component of every SBOM - as
+`library`; the webpack and composer plugins write `application`. Dependency-Track takes
+that type as the classifier of a project it creates. A project created before keeps its
+classifier: set it to Library by hand.
+
 The job authenticates with workload identity federation: GitHub's OIDC token of the job,
 with the audience `https://api.hausmeister.palasthotel.de`, is exchanged for a session of
 the service account `ci-github` via the workload identity provider `github-actions`. No
