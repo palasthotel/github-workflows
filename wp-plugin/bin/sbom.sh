@@ -35,7 +35,10 @@ rm -rf "$SBOM_DIR"
 mkdir -p "$SBOM_DIR"
 
 # keep FILE KIND: writes FILE to SBOM_DIR as sbom-KIND.cdx.json with the released
-# version, or reports that it is empty.
+# version, or reports that it is empty. The plugin is the main component, typed
+# library: it runs inside the WordPress site that installs it, the application.
+# Dependency-Track takes the type as the classifier of a project it creates; the
+# webpack and composer plugins both write application.
 keep() {
   local count
   count="$(jq '.components // [] | length' "$1")"
@@ -43,7 +46,8 @@ keep() {
     echo "$2: no components, no SBOM"
     return
   fi
-  jq --arg version "$VERSION" '.metadata.component.version = $version' "$1" > "$SBOM_DIR/sbom-$2.cdx.json"
+  jq --arg version "$VERSION" '.metadata.component.version = $version | .metadata.component.type = "library"' \
+    "$1" > "$SBOM_DIR/sbom-$2.cdx.json"
   echo "$2: sbom-$2.cdx.json, $count components"
 }
 

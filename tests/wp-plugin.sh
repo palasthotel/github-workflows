@@ -168,6 +168,7 @@ NPM_SBOM="$P/sbom/sbom-npm.cdx.json"
 expect "merges the SBOMs of every webpack build" test "$(jq -c '[.components[].name]' "$NPM_SBOM" 2>/dev/null)" = '["date-fns@4.4.0","jss@10.10.0"]'
 expect "drops css-loader, whose runtime only runs during the build" test "$(jq '[.. | strings | select(contains("css-loader"))] | length' "$NPM_SBOM" 2>/dev/null)" = 0
 expect "sets the released version" test "$(jq -r '.metadata.component.version' "$NPM_SBOM" 2>/dev/null)" = 1.2.4
+expect "types the plugin as a library" test "$(jq -r '.metadata.component.type' "$NPM_SBOM" 2>/dev/null)" = library
 expect "joins the dependencies of one ref" test "$(jq -c '.dependencies' "$NPM_SBOM" 2>/dev/null)" = '[{"ref":"root","dependsOn":["pkg:npm/date-fns@4.4.0","pkg:npm/jss@10.10.0"]}]'
 P="$(fixture sbom-empty)"
 webpack_sbom "$P/public/dist/cyclonedx"
