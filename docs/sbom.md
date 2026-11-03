@@ -153,16 +153,19 @@ released one, marked as the latest. A new version is created under the parent of
 latest one: move the first version of a project under a parent such as "WordPress
 plugins" once, and the following ones land there too.
 
-Every new version is tagged `library`: the policies of Dependency-Track are assigned by
-tag, and what we publish as open source is a library to the sites that install it - its
-findings are judged differently from those of a site we run. `project-tags` takes another
+Every new version is tagged `open-source`: the policies of Dependency-Track are assigned
+by tag, and that tag carries the license policy of what we publish as open source. Until
+November 2026 the tag was `library`; versions created before keep it, so the policy hangs
+on both tags until every plugin has had a release since. `project-tags` takes another
 comma-separated list. Dependency-Track only applies tags when the upload creates the
 version, so a version that existed before keeps the tags it has; tag those by hand.
 
-For the same reason `sbom.sh` types the plugin - the main component of every SBOM - as
-`library`; the webpack and composer plugins write `application`. Dependency-Track takes
-that type as the classifier of a project it creates. A project created before keeps its
-classifier: set it to Library by hand.
+What the plugin *is* is a separate thing: `sbom.sh` types it - the main component of
+every SBOM - as `library`, since it runs inside the WordPress site that installs it; the
+webpack and composer plugins write `application`. Dependency-Track takes that type as the
+classifier of a project it creates. A project created before keeps its classifier: set
+it to Library by hand. Libraries we don't publish (the plugins in GitLab's
+wordpress/custom-plugins, ZEN-UX) are typed library as well, but not tagged open-source.
 
 The job authenticates with workload identity federation: GitHub's OIDC token of the job,
 with the audience `https://api.hausmeister.palasthotel.de`, is exchanged for a session of
