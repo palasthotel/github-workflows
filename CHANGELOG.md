@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.8.0](https://github.com/palasthotel/github-workflows/compare/v1.7.0...v1.8.0) (2026-11-03)
+
+
+### Features
+
+* **dependency-track:** tag new project versions open-source instead of library ([1e69c15](https://github.com/palasthotel/github-workflows/commit/1e69c155acd9b89470f7fc48d8b4a240f8a9a57e))
+* **dependency-track:** tag new project versions open-source instead of library ([f114a3d](https://github.com/palasthotel/github-workflows/commit/f114a3dc8e2617522eae9421b4f79e5f62810778))
+* **sbom:** type the plugin in its SBOMs as a library ([136cf4b](https://github.com/palasthotel/github-workflows/commit/136cf4b4b5bf7a0fdfd9eeeceec805e77f737bcd))
+* **sbom:** type the plugin in its SBOMs as a library ([7643c92](https://github.com/palasthotel/github-workflows/commit/7643c92d6f5b8fdfa829983008c9551fd31a6d59))
+
 ## [1.7.0](https://github.com/palasthotel/github-workflows/compare/v1.6.0...v1.7.0) (2026-10-28)
 
 
