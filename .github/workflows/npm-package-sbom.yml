@@ -1,0 +1,129 @@
+---
+name: npm package - SBOM
+
+# Writes the CycloneDX SBOM of a released npm package - the runtime dependencies a
+# project gets when it installs the package, read from package-lock.json without the
+# devDependencies - attaches it to the GitHub release and hands it to
+# dependency-track-upload.yml as the artifact "sbom".
+#
+# A workflow of its own, not a step of the publish: an SBOM that can't be made must not
+# stop a release, and a released version can get its SBOM later by workflow_dispatch -
+# see docs/sbom.md.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Version without the tag prefix; empty means the tag that triggered the run"
+        required: false
+        type: string
+        default: ""
+      tag-prefix:
+        description: "What comes before the version in the release tags, e.g. npm-v in a repository that tags other packages too"
+        required: false
+        type: string
+        default: "v"
+      root:
+        description: "Directory of the package.json and package-lock.json"
+        required: false
+        type: string
+        default: "."
+      kind:
+        description: "The SBOM is sbom-<kind>.cdx.json, the project in Dependency-Track \"<owner>/<repository> (<kind>)\" - another kind than npm where the repository has an npm SBOM already, e.g. of a WordPress plugin"
+        required: false
+        type: string
+        default: "npm"
+      attach-to-release:
+        description: "Attach the SBOM to the GitHub release of the version"
+        required: false
+        type: boolean
+        default: true
+      cyclonedx-npm-version:
+        description: "Version of @cyclonedx/cyclonedx-npm - pinned, so the SBOM format can't change between two releases by accident"
+        required: false
+        type: string
+        default: "7.0.1"
+    outputs:
+      sboms:
+        description: "The SBOM written, e.g. \"npm\""
+        value: ${{ jobs.sbom.outputs.sboms }}
+      version:
+        description: "The version the SBOM describes"
+        value: ${{ jobs.sbom.outputs.version }}
+
+permissions:
+  contents: write
+
+jobs:
+  sbom:
+    name: SBOM
+    runs-on: ubuntu-latest
+    outputs:
+      sboms: ${{ steps.sbom.outputs.sboms }}
+      version: ${{ steps.version.outputs.version }}
+    env:
+      # One line on purpose: a folded block scalar would keep line breaks inside ${{ }}
+      RELEASE_TAG: ${{ inputs.version != '' && format('{0}{1}', inputs.tag-prefix, inputs.version) || github.ref_name }}
+      TAG_PREFIX: ${{ inputs.tag-prefix }}
+      ROOT: ${{ inputs.root }}
+      KIND: ${{ inputs.kind }}
+      CYCLONEDX_NPM_VERSION: ${{ inputs.cyclonedx-npm-version }}
+    steps:
+      - name: Version from the tag
+        id: version
+        run: |
+          # A tag of another package of the repository, or a typo in the dispatch
+          [[ "$RELEASE_TAG" == "$TAG_PREFIX"* ]] || { echo "::error::$RELEASE_TAG does not start with $TAG_PREFIX"; exit 1; }
+          # The kind becomes part of a file and a project name
+          [[ "$KIND" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo "::error::kind \"$KIND\" is not lowercase letters, digits and dashes"; exit 1; }
+          VERSION="${RELEASE_TAG#"$TAG_PREFIX"}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "🤖 SBOM of $ROOT $VERSION"
+
+      # The tag, also on a dispatch run: the SBOM describes what was released
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          persist-credentials: false
+
+      # The SBOM tool only needs a current Node, not the one of the package
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+
+      # --package-lock-only: nothing is installed, no install script runs.
+      # --mc-type library: the package runs inside the project that installs it.
+      - name: SBOM
+        id: sbom
+        run: |
+          [[ -f "$ROOT/package-lock.json" ]] || { echo "::error::no package-lock.json in $ROOT"; exit 1; }
+          mkdir -p sbom
+          (cd "$ROOT" && npx --yes "@cyclonedx/cyclonedx-npm@$CYCLONEDX_NPM_VERSION" \
+            --package-lock-only \
+            --omit dev \
+            --mc-type library \
+            --spec-version 1.6 \
+            --output-reproducible \
+            --output-format JSON \
+            --output-file "$GITHUB_WORKSPACE/sbom/sbom-$KIND.cdx.json")
+          jq -r '"🤖 \(.metadata.component.name)@\(.metadata.component.version): \(.components | length) components"' "sbom/sbom-$KIND.cdx.json"
+          echo "sboms=$KIND" >> "$GITHUB_OUTPUT"
+
+      - name: Attach the SBOM to the release
+        if: inputs.attach-to-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "sbom/sbom-$KIND.cdx.json" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            echo "::notice::No GitHub release for $RELEASE_TAG - the SBOM goes to Dependency-Track only"
+          fi
+
+      - name: Hand the SBOM to Dependency-Track
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: sbom/sbom-*.cdx.json
+          if-no-files-found: error
+          retention-days: 30

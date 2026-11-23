@@ -6,6 +6,7 @@ released version.
 
 ```
 v* tag ──▶ wp-plugin-sbom.yml            build → pack → sbom.sh → GitHub release + artifact "sbom"
+      or ─▶ npm-package-sbom.yml          package-lock.json → GitHub release + artifact "sbom"
                │
                └──▶ dependency-track-upload.yml   OIDC token → session → one project per SBOM
 ```
@@ -144,6 +145,74 @@ and:
 
 Outputs: `sboms` (e.g. `composer npm`, empty when nothing ships) and `version`.
 
+## An npm package
+
+A library published to npm - wp-rest, or the npm package next to a plugin as in
+headless - ships its `dependencies` to every project that installs it. Its SBOM is read
+from `package-lock.json` with [`@cyclonedx/cyclonedx-npm`](https://github.com/CycloneDX/cyclonedx-node-npm)
+`--package-lock-only --omit dev`: nothing is installed, no install script runs, and the
+devDependencies - the toolchain - stay out. The package itself is typed `library`.
+
+`.github/workflows/sbom.yml`, or `sbom-npm.yml` next to the one of a plugin:
+
+```yaml
+name: SBOM (npm)
+
+on:
+  push:
+    tags:
+      - "npm-v*"
+  # The SBOM of a version released before this workflow existed - see
+  # https://github.com/palasthotel/github-workflows/blob/main/docs/sbom.md
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Released version, without the prefix (e.g. 3.0.11)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    uses: palasthotel/github-workflows/.github/workflows/npm-package-sbom.yml@v1
+    permissions:
+      contents: write
+    with:
+      root: npm-package
+      tag-prefix: npm-v
+      kind: npm-package
+      version: ${{ github.event.inputs.version }}
+
+  dependency-track:
+    needs: sbom
+    uses: palasthotel/github-workflows/.github/workflows/dependency-track-upload.yml@v1
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      version: ${{ needs.sbom.outputs.version }}
+```
+
+A repository with nothing but the npm package leaves out `root`, `tag-prefix` and
+`kind`. Next to a plugin, `kind` must not be `npm`: the plugin's webpack SBOM is
+`<owner>/<repository> (npm)` already, with a version line of its own, and the two would
+overwrite each other.
+
+### Inputs of npm-package-sbom.yml
+
+| Input | Default | Meaning |
+|---|---|---|
+| `version` | the tag of the run | the released version, without `tag-prefix` - for **Run workflow** |
+| `tag-prefix` | `v` | what comes before the version in the release tags |
+| `root` | `.` | the directory of `package.json` and `package-lock.json` |
+| `kind` | `npm` | the SBOM is `sbom-<kind>.cdx.json`, the project `<owner>/<repository> (<kind>)` |
+| `attach-to-release` | `true` | attach the SBOM to the GitHub release |
+| `cyclonedx-npm-version` | `7.0.1` | of `@cyclonedx/cyclonedx-npm`, pinned so the format can't change between two releases by accident |
+
+Outputs: `sboms` (the kind) and `version`.
+
 ## Dependency-Track
 
 `dependency-track-upload.yml` sends each SBOM to its own project,
@@ -187,7 +256,11 @@ this workflow, from releases and the default branch:
 | | |
 |---|---|
 | Subject | `repo:palasthotel@4201000/*` - the immutable subject with the organisation's ID, so a deleted repository can't be recreated under its name and inherit its access |
-| Condition | `(claims.job_workflow_ref.startsWith("palasthotel/github-workflows/.github/workflows/dependency-track-upload.yml@") \|\| claims.job_workflow_ref.startsWith("palasthotel@4201000/github-workflows@1401352495/.github/workflows/dependency-track-upload.yml@")) && (claims.ref == "refs/heads/main" \|\| claims.ref.startsWith("refs/tags/v") \|\| claims.ref.startsWith("refs/tags/plugin-v"))` - `job_workflow_ref` in both forms GitHub may send it, the tags with both prefixes in use |
+| Condition | `(claims.job_workflow_ref.startsWith("palasthotel/github-workflows/.github/workflows/dependency-track-upload.yml@") \|\| claims.job_workflow_ref.startsWith("palasthotel@4201000/github-workflows@1401352495/.github/workflows/dependency-track-upload.yml@")) && (claims.ref == "refs/heads/main" \|\| claims.ref.startsWith("refs/tags/v") \|\| claims.ref.startsWith("refs/tags/plugin-v") \|\| claims.ref.startsWith("refs/tags/npm-v"))` - `job_workflow_ref` in both forms GitHub may send it, the tags with every prefix in use |
+
+A binding can't be edited, only replaced by a new one: a new tag prefix means a new
+binding with the extended condition, and the old one deleted. Until then a **Run
+workflow** from `main` gets through, since its `ref` is the branch.
 
 A repository that still sends the old subject (`repo:palasthotel/<name>`) has to switch
 to the immutable one before its upload works (REST API

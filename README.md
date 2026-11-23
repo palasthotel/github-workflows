@@ -10,6 +10,7 @@ repositories call them.
 | Family | Workflows | Documentation |
 |---|---|---|
 | WordPress plugins | `wp-plugin-pr.yml`, `wp-plugin-release-please.yml`, `wp-plugin-sync-version.yml`, `wp-plugin-svn-deploy.yml`, `wp-plugin-sbom.yml` | [docs/wp-plugin.md](docs/wp-plugin.md), [docs/sbom.md](docs/sbom.md) |
+| npm packages | `npm-package-sbom.yml` | [docs/sbom.md](docs/sbom.md#an-npm-package) |
 | Dependency-Track | `dependency-track-upload.yml` | [docs/sbom.md](docs/sbom.md) |
 | Dependabot | `dependabot/bin/generate.sh`, the template of every `.github/dependabot.yml` | [docs/dependabot.md](docs/dependabot.md) |
 
@@ -42,7 +43,7 @@ credentials stay in the calling repositories and are passed with `secrets: inher
 
 | Path | |
 |---|---|
-| `.github/workflows/wp-plugin-*.yml` | the reusable workflows - GitHub requires them directly in `.github/workflows/`, hence the prefix per family |
+| `.github/workflows/wp-plugin-*.yml`, `npm-package-*.yml` | the reusable workflows - GitHub requires them directly in `.github/workflows/`, hence the prefix per family |
 | `.github/workflows/ci.yml`, `release-please.yml` | this repository's own checks and releases |
 | `wp-plugin/bin/` | the scripts the WordPress workflows run |
 | `dependency-track/bin/` | the upload script of `dependency-track-upload.yml` |
