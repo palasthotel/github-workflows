@@ -19,6 +19,11 @@ on:
         required: false
         type: string
         default: ".release-please-manifest.json"
+      assignees:
+        description: "Comma-separated GitHub users who get the release PR, as the Dependabot PRs - empty assigns nobody"
+        required: false
+        type: string
+        default: "JanaME"
     secrets:
       RELEASE_BOT_PRIVATE_KEY:
         required: true
@@ -42,7 +47,31 @@ jobs:
           permission-pull-requests: write
 
       - uses: googleapis/release-please-action@v5
+        id: release
         with:
           token: ${{ steps.app-token.outputs.token }}
           config-file: ${{ inputs.config-file }}
           manifest-file: ${{ inputs.manifest-file }}
+
+      # A release PR waits for someone to merge it: assign it, so it shows up in the
+      # list of that person like the Dependabot PRs. Adding an assignee twice changes
+      # nothing, so a PR that was only updated gets the same.
+      - name: Assign the release PR
+        if: steps.release.outputs.prs_created == 'true' && inputs.assignees != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PRS: ${{ steps.release.outputs.prs }}
+          ASSIGNEES: ${{ inputs.assignees }}
+        run: |
+          args=()
+          IFS=',' read -ra users <<< "$ASSIGNEES"
+          for user in "${users[@]}"; do
+            user="${user// /}"
+            [[ -n "$user" ]] && args+=(-f "assignees[]=$user")
+          done
+          for number in $(jq -r '.[].number' <<< "$PRS"); do
+            # A failed assignment must not fail the release job
+            gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$number/assignees" "${args[@]}" --silent \
+              && echo "🤖 #$number assigned to $ASSIGNEES" \
+              || echo "::warning::Could not assign #$number to $ASSIGNEES"
+          done

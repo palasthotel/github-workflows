@@ -185,6 +185,7 @@ where they are left empty.
 | `node-version` | `24.x` | for the build command |
 | `php-version` | `8.1` | for composer, used when the payload has a `composer.json` |
 | `app-id` | - | `${{ vars.RELEASE_BOT_APP_ID }}` (release-please, sync) |
+| `assignees` | `JanaME` | comma-separated users who get the release PR, like the Dependabot PRs ([dependabot.md](dependabot.md)); empty assigns nobody (release-please) |
 | `plugin-check` | `true` | run the wordpress.org Plugin Check on the packed payload (pr) |
 | `plugin-check-strict` | `false` | fail on Plugin Check warnings as well, not only on errors (pr) |
 | `tools-ref` | `v1` | the ref of this repository whose scripts run - keep it equal to the ref after `@` |
