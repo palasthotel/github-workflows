@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/palasthotel/github-workflows/compare/v1.9.0...v1.10.0) (2026-11-23)
+
+
+### Features
+
+* **release-please:** assign the release PR ([#29](https://github.com/palasthotel/github-workflows/issues/29)) ([d6f81e0](https://github.com/palasthotel/github-workflows/commit/d6f81e00006a7c959d2f78647ad7ec0ab08e8222))
+
 ## [1.9.0](https://github.com/palasthotel/github-workflows/compare/v1.8.0...v1.9.0) (2026-11-23)
 
 
