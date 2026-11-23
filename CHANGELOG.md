@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/palasthotel/github-workflows/compare/v1.8.0...v1.9.0) (2026-11-23)
+
+
+### Features
+
+* **sbom:** add npm-package-sbom.yml for published npm packages ([#27](https://github.com/palasthotel/github-workflows/issues/27)) ([6008608](https://github.com/palasthotel/github-workflows/commit/6008608a18e5a01254dd92d858cfa10bf1a6da52))
+
 ## [1.8.0](https://github.com/palasthotel/github-workflows/compare/v1.7.0...v1.8.0) (2026-11-03)
 
 
